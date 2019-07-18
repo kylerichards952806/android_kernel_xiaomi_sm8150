@@ -345,6 +345,8 @@ struct cam_req_mgr_dev_sof_evt {
  *                         stream after streamon if it is true
  * @sof_timestamp_value  : SOF timestamp value
  * @prev_sof_timestamp   : Previous SOF timestamp value
+ * @is_shutdown          : Flag to indicate if link needs to be disconnected
+ *                         as part of shutdown.
  */
 struct cam_req_mgr_core_link {
 	int32_t                              link_hdl;
@@ -375,6 +377,7 @@ struct cam_req_mgr_core_link {
 	int64_t                              initial_sync_req;
 	uint64_t                             sof_timestamp;
 	uint64_t                             prev_sof_timestamp;
+	bool                                 is_shutdown;
 };
 
 /**
@@ -427,11 +430,13 @@ int cam_req_mgr_create_session(struct cam_req_mgr_session_info *ses_info);
  * cam_req_mgr_destroy_session()
  * @brief    : destroy session
  * @ses_info : session handle info, input param
+ * @is_shutdown: To indicate if devices on link need to be disconnected.
  *
  * Called as part of session destroy
  * return success/failure
  */
-int cam_req_mgr_destroy_session(struct cam_req_mgr_session_info *ses_info);
+int cam_req_mgr_destroy_session(struct cam_req_mgr_session_info *ses_info,
+	bool is_shutdown);
 
 /**
  * cam_req_mgr_link()

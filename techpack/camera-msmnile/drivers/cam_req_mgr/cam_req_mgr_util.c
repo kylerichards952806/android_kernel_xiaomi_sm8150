@@ -119,7 +119,7 @@ int cam_req_mgr_util_free_hdls(void)
 
 	for (i = 0; i < CAM_REQ_MGR_MAX_HANDLES; i++) {
 		if (hdl_tbl->hdl[i].state == HDL_ACTIVE) {
-			CAM_ERR(CAM_CRM, "Dev handle = %x session_handle = %x",
+			CAM_WARN(CAM_CRM, "Dev handle = %x session_handle = %x",
 				hdl_tbl->hdl[i].hdl_value,
 				hdl_tbl->hdl[i].session_hdl);
 			hdl_tbl->hdl[i].state = HDL_FREE;
