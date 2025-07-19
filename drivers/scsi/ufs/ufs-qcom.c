@@ -1613,7 +1613,11 @@ static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_qcom_host *host, bool enable)
 		 * exit command.
 		 */
 		if (enable)
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+			usleep_range(960, 970);
+#else
 			usleep_range(50, 60);
+#endif
 
 		host->is_dev_ref_clk_enabled = enable;
 	}
