@@ -21,23 +21,23 @@
 
 	qcom,pm8150l@4 {
 		compatible = "qcom,spmi-pmic";
-		reg = <0x4 SPMI_USID>;
-		#address-cells = <2>;
+		reg = <4 SPMI_USID>;
+		#address-cells = <1>;
 		#size-cells = <0>;
 
 		pm8150l_revid: qcom,revid@100 {
 			compatible = "qcom,qpnp-revid";
-			reg = <0x100 0x100>;
+			reg = <0x100>;
 		};
 
 		qcom,power-on@800 {
 			compatible = "qcom,qpnp-power-on";
-			reg = <0x800 0x100>;
+			reg = <0x800>;
 		};
 
 		pm8150l_tz: qcom,temp-alarm@2400 {
 			compatible = "qcom,spmi-temp-alarm";
-			reg = <0x2400 0x100>;
+			reg = <0x2400>;
 			interrupts = <0x4 0x24 0x0 IRQ_TYPE_EDGE_RISING>;
 			io-channels = <&pm8150l_vadc ADC5_DIE_TEMP>;
 			io-channel-names = "thermal";
@@ -47,7 +47,7 @@
 
 		pm8150l_clkdiv: clock-controller@5b00 {
 			compatible = "qcom,spmi-clkdiv";
-			reg = <0x5b00 0x100>;
+			reg = <0x5b00>;
 			#clock-cells = <1>;
 			qcom,num-clkdivs = <1>;
 			clock-output-names = "pm8150l_div_clk1";
@@ -57,7 +57,7 @@
 
 		pm8150l_gpios: pinctrl@c000 {
 			compatible = "qcom,spmi-gpio";
-			reg = <0xc000 0xc00>;
+			reg = <0xc000>;
 			interrupts = <0x4 0xc0 0 IRQ_TYPE_NONE>,
 					<0x4 0xc1 0 IRQ_TYPE_NONE>,
 					<0x4 0xc2 0 IRQ_TYPE_NONE>,
@@ -82,7 +82,7 @@
 
 		pm8150l_vadc: vadc@3100 {
 			compatible = "qcom,spmi-adc5";
-			reg = <0x3100 0x100>;
+			reg = <0x3100>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			interrupts = <0x4 0x31 0x0 IRQ_TYPE_EDGE_RISING>;
@@ -113,7 +113,7 @@
 
 		pm8150l_bcl: bcl@3d00 {
 			compatible = "qcom,bcl-v5";
-			reg = <0x3d00 0x100>;
+			reg = <0x3d00>;
 			interrupts = <0x4 0x3d 0x0 IRQ_TYPE_NONE>,
 					<0x4 0x3d 0x1 IRQ_TYPE_NONE>,
 					<0x4 0x3d 0x2 IRQ_TYPE_NONE>;
@@ -125,7 +125,7 @@
 
 		pm8150l_adc_tm: adc_tm@3500 {
 			compatible = "qcom,adc-tm5";
-			reg = <0x3500 0x100>;
+			reg = <0x3500>;
 			interrupts = <0x4 0x35 0x0 IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "thr-int-en";
 			#address-cells = <1>;
@@ -139,15 +139,15 @@
 
 	qcom,pm8150l@5 {
 		compatible ="qcom,spmi-pmic";
-		reg = <0x5 SPMI_USID>;
-		#address-cells = <2>;
+		reg = <5 SPMI_USID>;
+		#address-cells = <1>;
 		#size-cells = <0>;
 
 		pm8150l_lcdb: qcom,lcdb@ec00 {
 			compatible = "qcom,qpnp-lcdb-regulator";
 			#address-cells = <1>;
 			#size-cells = <1>;
-			reg = <0xec00 0x100>;
+			reg = <0xec00>;
 			interrupts = <0x5 0xec 0x1 IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "sc-irq";
 			qcom,pmic-revid = <&pm8150l_revid>;
@@ -179,7 +179,7 @@
 		flash_led: qcom,leds@d300 {
 			compatible = "qcom,qpnp-flash-led-v2";
 			status = "okay";
-			reg = <0xd300 0x100>;
+			reg = <0xd300>;
 			label = "flash";
 			interrupts = <0x5 0xd3 0x0 IRQ_TYPE_EDGE_RISING>,
 				     <0x5 0xd3 0x3 IRQ_TYPE_EDGE_RISING>,
@@ -297,7 +297,7 @@
 
 		pm8150l_wled: qcom,wled@d800 {
 			compatible = "qcom,pm8150l-spmi-wled";
-			reg = <0xd800 0x100>, <0xd900 0x100>;
+			reg = <0xd800>, <0xd900>;
 			reg-names = "wled-ctrl-base", "wled-sink-base";
 			label = "backlight";
 			interrupts = <0x5 0xd8 0x1 IRQ_TYPE_EDGE_RISING>,
@@ -328,7 +328,7 @@
 
 		pm8150l_lpg: qcom,pwms@b100 {
 			compatible = "qcom,pwm-lpg";
-			reg = <0xb100 0x300>, <0xb000 0x100>;
+			reg = <0xb100>, <0xb000>;
 			reg-names = "lpg-base", "lut-base";
 			#pwm-cells = <2>;
 			qcom,num-lpg-channels = <3>;
@@ -370,7 +370,7 @@
 
 		pm8150l_pwm: qcom,pwms@bc00 {
 			compatible = "qcom,pwm-lpg";
-			reg = <0xbc00 0x200>;
+			reg = <0xbc00>;
 			reg-names = "lpg-base";
 			#pwm-cells = <2>;
 			qcom,num-lpg-channels = <2>;
@@ -378,7 +378,7 @@
 
 		pm8150l_rgb_led: qcom,leds@d000 {
 			compatible = "qcom,tri-led";
-			reg = <0xd000 0x100>;
+			reg = <0xd000>;
 			red_led: red {
 				label = "red";
 				pwms = <&pm8150l_lpg 0 1000000>;
@@ -407,7 +407,7 @@
 			status = "disabled";
 
 			oledb_vreg: oledb@e000 {
-				reg = <0xe000 0x100>;
+				reg = <0xe000>;
 				reg-names = "oledb_base";
 				regulator-name = "oledb";
 				regulator-min-microvolt = <4925000>;
@@ -416,7 +416,7 @@
 			};
 
 			ab_vreg: ab@de00 {
-				reg = <0xde00 0x100>;
+				reg = <0xde00>;
 				reg-names = "ab_base";
 				regulator-name = "ab";
 				regulator-min-microvolt = <4600000>;
@@ -425,7 +425,7 @@
 			};
 
 			ibb_vreg: ibb@dc00 {
-				reg = <0xdc00 0x100>;
+				reg = <0xdc00>;
 				reg-names = "ibb_base";
 				regulator-name = "ibb";
 				regulator-min-microvolt = <800000>;
