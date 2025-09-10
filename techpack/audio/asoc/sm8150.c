@@ -6571,6 +6571,7 @@ static struct snd_soc_dai_link quat_mi2s_rx_tfa9874_dai_links[] = {
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "tfa98xx.1-0034",
 		.codec_dai_name = "tfa98xx-aif-1-34",
+		.dynamic_be = 1,
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
