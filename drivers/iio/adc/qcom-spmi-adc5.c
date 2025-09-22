@@ -998,6 +998,14 @@ static const struct adc5_channels adc5_chans_pmic[ADC5_MAX_CHANNEL] = {
 	[ADC5_PARALLEL_ISENSE_VBAT_VDATA] = ADC5_CHAN_POWER(
 					"parallel_vbat_isense", 0,
 						SCALE_HW_CALIB_PM5_CUR)
+#if defined(CONFIG_MACH_XIAOMI_SM8150)
+	[ADC5_GPIO1_100K_PU]	= ADC5_CHAN_VOLT("gpio1_100k_pu", 0,
+					SCALE_HW_CALIB_DEFAULT)
+	[ADC5_GPIO2_100K_PU] 	= ADC5_CHAN_VOLT("gpio2_100k_pu", 0,
+					SCALE_HW_CALIB_DEFAULT)
+	[ADC5_GPIO4_100K_PU]	= ADC5_CHAN_TEMP("gpio4_100k_pu", 0,
+					SCALE_HW_CALIB_THERM_100K_PULLUP)
+#else
 	[ADC5_GPIO1_100K_PU]	= ADC5_CHAN_TEMP("gpio1_100k_pu", 0,
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
 	[ADC5_GPIO2_100K_PU]	= ADC5_CHAN_TEMP("gpio2_100k_pu", 0,
@@ -1006,6 +1014,7 @@ static const struct adc5_channels adc5_chans_pmic[ADC5_MAX_CHANNEL] = {
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
 	[ADC5_GPIO4_100K_PU]	= ADC5_CHAN_TEMP("gpio4_100k_pu", 0,
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
+#endif
 };
 
 static const struct adc5_channels adc7_chans_pmic[ADC5_MAX_CHANNEL] = {
