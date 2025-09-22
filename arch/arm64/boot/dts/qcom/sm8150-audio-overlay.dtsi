@@ -40,15 +40,16 @@
 
 	qcom,pahu-ext-clk-freq = <19200000>;
 
-	asoc-codec = <&stub_codec>, <&ext_disp_audio_codec>;
-	asoc-codec-names = "msm-stub-codec.1",
-			   "msm-ext-disp-audio-codec-rx";
+	asoc-codec = <&stub_codec>, <&wcd9360_cdc>,
+			<&wsa881x_0211>, <&wsa881x_0212>,
+			<&wsa881x_0213>, <&wsa881x_0214>,
+			<&ext_disp_audio_codec>;
+	asoc-codec-names = "msm-stub-codec.1", "tavil_codec",
+			"wsa-codec.1", "wsa-codec.2",
+			"wsa-codec.3", "wsa-codec.4",
+			"msm-ext-disp-audio-codec-rx";
 
 	qcom,wsa-max-devs = <1>;
-	qcom,wsa-devs = <&wsa881x_0211>, <&wsa881x_0212>,
-			<&wsa881x_0213>, <&wsa881x_0214>;
-	qcom,wsa-aux-dev-prefix = "SpkrLeft", "SpkrRight",
-				  "SpkrLeft", "SpkrRight";
 };
 
 &snd_934x {
@@ -95,15 +96,15 @@
 	qcom,hph-en1-gpio = <&tavil_hph_en1>;
 	qcom,tavil-mclk-clk-freq = <9600000>;
 
-	asoc-codec = <&stub_codec>, <&ext_disp_audio_codec>;
-	asoc-codec-names = "msm-stub-codec.1",
-			   "msm-ext-disp-audio-codec-rx";
-
+	asoc-codec = <&stub_codec>, <&wcd934x_cdc>,
+			<&wsa881x_70211>, <&wsa881x_70212>,
+			<&wsa881x_70213>, <&wsa881x_70214>,
+			<&ext_disp_audio_codec>;
+	asoc-codec-names = "msm-stub-codec.1", "tavil_codec",
+			"wsa-codec.1", "wsa-codec.2",
+			"wsa-codec.3", "wsa-codec.4",
+			"msm-ext-disp-audio-codec-rx";
 	qcom,wsa-max-devs = <2>;
-	qcom,wsa-devs = <&wsa881x_70211>, <&wsa881x_70212>,
-			<&wsa881x_70213>, <&wsa881x_70214>;
-	qcom,wsa-aux-dev-prefix = "SpkrLeft", "SpkrRight",
-				  "SpkrLeft", "SpkrRight";
 };
 
 &soc {
