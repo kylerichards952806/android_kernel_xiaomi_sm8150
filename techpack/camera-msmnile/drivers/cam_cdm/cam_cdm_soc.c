@@ -22,7 +22,7 @@
 #include "cam_soc_util.h"
 #include "cam_smmu_api.h"
 #include "cam_cdm.h"
-#include "cam_soc_util.h"
+#include "cam_cdm_soc.h"
 #include "cam_io_util.h"
 
 #define CAM_CDM_OFFSET_FROM_REG(x, y) ((x)->offsets[y].offset)

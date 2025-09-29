@@ -62,6 +62,7 @@ struct cam_subdev {
 	u32                                    sd_flags;
 	void                                  *token;
 	u32                                    ent_function;
+	bool                                   subdev_node_created;
 };
 
 /**
@@ -86,15 +87,6 @@ int cam_subdev_probe(struct cam_subdev *sd, struct platform_device *pdev,
  *
  */
 int cam_subdev_remove(struct cam_subdev *sd);
-
-/**
- * cam_register_subdev_fops()
- *
- * @brief:   This common utility function assigns subdev ops
- *
- * @fops:    v4l file operations
- */
-void cam_register_subdev_fops(struct v4l2_file_operations *fops);
 
 /**
  * cam_register_subdev()
@@ -134,5 +126,12 @@ void cam_req_mgr_rwsem_read_op(enum cam_subdev_rwsem lock);
  *
  */
 bool  cam_req_mgr_is_open(void);
+
+/**
+ * cam_req_mgr_is_shutdown()
+ *
+ * @brief:    This common utility function returns the shutdown state
+ */
+bool cam_req_mgr_is_shutdown(void);
 
 #endif /* _CAM_SUBDEV_H_ */

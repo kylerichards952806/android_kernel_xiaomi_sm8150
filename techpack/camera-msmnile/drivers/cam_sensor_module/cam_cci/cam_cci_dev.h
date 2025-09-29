@@ -316,4 +316,15 @@ static inline struct v4l2_subdev *cam_cci_get_subdev(int cci_dev_index)
 #define VIDIOC_MSM_CCI_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 23, struct cam_cci_ctrl)
 
+/**
+ * @brief : API to register CCI hw to platform framework.
+ * @return struct platform_device pointer on on success, or ERR_PTR() on error.
+ */
+int cam_cci_init_module(void);
+
+/**
+ * @brief : API to remove CCI hw from platform framework.
+ */
+void cam_cci_exit_module(void);
+
 #endif /* _CAM_CCI_DEV_H_ */

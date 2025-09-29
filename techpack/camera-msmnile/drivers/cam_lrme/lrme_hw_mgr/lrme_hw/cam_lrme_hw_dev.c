@@ -27,6 +27,7 @@
 #include "cam_lrme_hw_mgr.h"
 #include "cam_mem_mgr_api.h"
 #include "cam_smmu_api.h"
+#include "camera_main.h"
 
 static int cam_lrme_hw_dev_util_cdm_acquire(struct cam_lrme_core *lrme_core,
 	struct cam_hw_info *lrme_hw)
@@ -83,8 +84,10 @@ error:
 	return rc;
 }
 
-static int cam_lrme_hw_dev_probe(struct platform_device *pdev)
+static int cam_lrme_hw_dev_component_bind(struct device *dev,
+	struct device *master_dev, void *data)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct cam_hw_info *lrme_hw;
 	struct cam_hw_intf lrme_hw_intf;
 	struct cam_lrme_core *lrme_core;
@@ -211,7 +214,7 @@ static int cam_lrme_hw_dev_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, lrme_hw);
-	CAM_DBG(CAM_LRME, "LRME-%d probe successful", lrme_hw_intf.hw_idx);
+	CAM_DBG(CAM_LRME, "LRME-%d component bound successfully", lrme_hw_intf.hw_idx);
 
 	return rc;
 
@@ -235,23 +238,23 @@ free_memory:
 	return rc;
 }
 
-static int cam_lrme_hw_dev_remove(struct platform_device *pdev)
+static void cam_lrme_hw_dev_component_unbind(struct device *dev,
+	struct device *master_dev, void *data)
 {
-	int rc = 0;
+	struct platform_device *pdev = to_platform_device(dev);
 	struct cam_hw_info *lrme_hw;
 	struct cam_lrme_core *lrme_core;
+	int rc = 0;
 
 	lrme_hw = platform_get_drvdata(pdev);
 	if (!lrme_hw) {
 		CAM_ERR(CAM_LRME, "Invalid lrme_hw from fd_hw_intf");
-		rc = -ENODEV;
 		goto deinit_platform_res;
 	}
 
 	lrme_core = (struct cam_lrme_core *)lrme_hw->core_info;
 	if (!lrme_core) {
 		CAM_ERR(CAM_LRME, "Invalid lrme_core from fd_hw");
-		rc = -EINVAL;
 		goto deinit_platform_res;
 	}
 
@@ -264,16 +267,35 @@ static int cam_lrme_hw_dev_remove(struct platform_device *pdev)
 	kfree(lrme_core);
 
 deinit_platform_res:
-	if (lrme_hw) {
-		rc = cam_lrme_soc_deinit_resources(&lrme_hw->soc_info);
-		if (rc)
-			CAM_ERR(CAM_LRME,
-				"Error in LRME soc deinit, rc=%d", rc);
+	rc = cam_lrme_soc_deinit_resources(&lrme_hw->soc_info);
+	if (rc)
+		CAM_ERR(CAM_LRME, "Error in LRME soc deinit, rc=%d", rc);
 
-		mutex_destroy(&lrme_hw->hw_mutex);
-		kfree(lrme_hw);
-	}
+	mutex_destroy(&lrme_hw->hw_mutex);
+	kfree(lrme_hw);
+}
+
+static const struct component_ops cam_lrme_hw_dev_component_ops = {
+	.bind = cam_lrme_hw_dev_component_bind,
+	.unbind = cam_lrme_hw_dev_component_unbind,
+};
+
+static int cam_lrme_hw_dev_probe(struct platform_device *pdev)
+{
+	int rc = 0;
+
+	CAM_DBG(CAM_LRME, "Adding LRME HW component");
+	rc = component_add(&pdev->dev, &cam_lrme_hw_dev_component_ops);
+	if (rc)
+		CAM_ERR(CAM_LRME, "failed to add component rc: %d", rc);
+
 	return rc;
+}
+
+static int cam_lrme_hw_dev_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &cam_lrme_hw_dev_component_ops);
+	return 0;
 }
 
 static const struct of_device_id cam_lrme_hw_dt_match[] = {
@@ -286,7 +308,7 @@ static const struct of_device_id cam_lrme_hw_dt_match[] = {
 
 MODULE_DEVICE_TABLE(of, cam_lrme_hw_dt_match);
 
-static struct platform_driver cam_lrme_hw_driver = {
+struct platform_driver cam_lrme_hw_driver = {
 	.probe = cam_lrme_hw_dev_probe,
 	.remove = cam_lrme_hw_dev_remove,
 	.driver = {
@@ -297,17 +319,15 @@ static struct platform_driver cam_lrme_hw_driver = {
 	},
 };
 
-static int __init cam_lrme_hw_init_module(void)
+int cam_lrme_hw_init_module(void)
 {
 	return platform_driver_register(&cam_lrme_hw_driver);
 }
 
-static void __exit cam_lrme_hw_exit_module(void)
+void cam_lrme_hw_exit_module(void)
 {
 	platform_driver_unregister(&cam_lrme_hw_driver);
 }
 
-module_init(cam_lrme_hw_init_module);
-module_exit(cam_lrme_hw_exit_module);
 MODULE_DESCRIPTION("CAM LRME HW driver");
 MODULE_LICENSE("GPL v2");

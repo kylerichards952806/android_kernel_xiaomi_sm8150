@@ -29,4 +29,14 @@ static struct cam_csid_ppi_reg_offset cam_csid_ppi_170_reg_offset = {
 	.ppi_spare_addr         = 0x1fc,
 };
 
+/**
+ * @brief : API to remove CSID PPI170 from platform framework.
+ */
+int cam_csid_ppi170_init_module(void);
+
+/**
+ * @brief : API to remove CSID PPI170 from platform framework.
+ */
+void cam_csid_ppi170_exit_module(void);
+
 #endif /*_CAM_CSID_PPI_170_H_ */

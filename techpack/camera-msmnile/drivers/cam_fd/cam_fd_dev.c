@@ -22,6 +22,7 @@
 #include "cam_fd_context.h"
 #include "cam_fd_hw_mgr.h"
 #include "cam_fd_hw_mgr_intf.h"
+#include "camera_main.h"
 
 #define CAM_FD_DEV_NAME "cam-fd"
 
@@ -100,12 +101,13 @@ static const struct v4l2_subdev_internal_ops cam_fd_subdev_internal_ops = {
 	.close = cam_fd_dev_close,
 };
 
-static int cam_fd_dev_probe(struct platform_device *pdev)
+static int cam_fd_dev_component_bind(struct device *dev,
+	struct device *master_dev, void *data)
 {
-	int rc;
-	int i;
+	struct platform_device *pdev = to_platform_device(dev);
 	struct cam_hw_mgr_intf hw_mgr_intf;
 	struct cam_node *node;
+	int i, rc;
 
 	g_fd_dev.sd.internal_ops = &cam_fd_subdev_internal_ops;
 
@@ -145,7 +147,7 @@ static int cam_fd_dev_probe(struct platform_device *pdev)
 	mutex_init(&g_fd_dev.lock);
 	g_fd_dev.probe_done = true;
 
-	CAM_DBG(CAM_FD, "Camera FD probe complete");
+	CAM_DBG(CAM_FD, "Camera FD component bound successfully");
 
 	return 0;
 
@@ -161,8 +163,10 @@ unregister_subdev:
 	return rc;
 }
 
-static int cam_fd_dev_remove(struct platform_device *pdev)
+static void cam_fd_dev_component_unbind(struct device *dev,
+	struct device *master_dev, void *data)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	int i, rc;
 
 	for (i = 0; i < CAM_CTX_MAX; i++) {
@@ -182,8 +186,29 @@ static int cam_fd_dev_remove(struct platform_device *pdev)
 
 	mutex_destroy(&g_fd_dev.lock);
 	g_fd_dev.probe_done = false;
+}
+
+static const struct component_ops cam_fd_dev_component_ops = {
+	.bind = cam_fd_dev_component_bind,
+	.unbind = cam_fd_dev_component_unbind,
+};
+
+static int cam_fd_dev_probe(struct platform_device *pdev)
+{
+	int rc = 0;
+
+	CAM_DBG(CAM_FD, "Adding FD dev component");
+	rc = component_add(&pdev->dev, &cam_fd_dev_component_ops);
+	if (rc)
+		CAM_ERR(CAM_FD, "failed to add component rc: %d", rc);
 
 	return rc;
+}
+
+static int cam_fd_dev_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &cam_fd_dev_component_ops);
+	return 0;
 }
 
 static const struct of_device_id cam_fd_dt_match[] = {
@@ -193,7 +218,7 @@ static const struct of_device_id cam_fd_dt_match[] = {
 	{}
 };
 
-static struct platform_driver cam_fd_driver = {
+struct platform_driver cam_fd_driver = {
 	.probe = cam_fd_dev_probe,
 	.remove = cam_fd_dev_remove,
 	.driver = {
@@ -204,17 +229,15 @@ static struct platform_driver cam_fd_driver = {
 	},
 };
 
-static int __init cam_fd_dev_init_module(void)
+int cam_fd_dev_init_module(void)
 {
 	return platform_driver_register(&cam_fd_driver);
 }
 
-static void __exit cam_fd_dev_exit_module(void)
+void cam_fd_dev_exit_module(void)
 {
 	platform_driver_unregister(&cam_fd_driver);
 }
 
-module_init(cam_fd_dev_init_module);
-module_exit(cam_fd_dev_exit_module);
 MODULE_DESCRIPTION("MSM FD driver");
 MODULE_LICENSE("GPL v2");

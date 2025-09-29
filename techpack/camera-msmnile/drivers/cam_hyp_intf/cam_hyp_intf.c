@@ -29,7 +29,9 @@
 #include <media/cam_hyp_intf.h>
 #include <microvisor/microvisor.h>
 #include <microvisor/resource_manager.h>
+#include "cam_hyp_intf_def.h"
 #include "cam_debug_util.h"
+#include "camera_main.h"
 
 static const char CAM_HYP_INTF_DRIVER_NAME[] = "cam-hyp-intf";
 static const int MAX_WAIT_TIMEOUT_MS = 100;
@@ -386,12 +388,16 @@ static const struct file_operations cam_hyp_intf_fops = {
 #endif
 };
 
-static int cam_hyp_intf_probe(struct platform_device *pdev)
+static int cam_hyp_intf_component_bind(struct device *dev,
+	struct device *master_dev, void *data)
 {
-	int rc;
+	struct platform_device *pdev   = to_platform_device(dev);
 	struct device *dev;
 	struct cam_hyp_intf_device *cam_hyp_intf_device_p;
 	u32 reg[2];
+	int rc;
+
+	CAM_DBG(CAM_HYP, "cam_hyp_intf_component_bind enter");
 
 	cam_hyp_intf_device_p = kzalloc(
 		sizeof(*cam_hyp_intf_device_p), GFP_KERNEL);
@@ -455,6 +461,8 @@ static int cam_hyp_intf_probe(struct platform_device *pdev)
 	mutex_init(&cam_hyp_intf_device_p->hyp_intf_lock);
 	platform_set_drvdata(pdev, cam_hyp_intf_device_p);
 
+	CAM_DBG(CAM_HYP, "cam_hyp_intf_component_bind exit");
+
 	return 0;
 
 err_fail_pipe_kcaps:
@@ -470,12 +478,15 @@ err_class_fail:
 
 err_char_dev_fail:
 	kfree(cam_hyp_intf_device_p);
+	CAM_ERR(CAM_HYP, "cam_hyp_intf_component_bind failed");
 	return rc;
 
 }
 
-static int cam_hyp_intf_remove(struct platform_device *pdev)
+static void cam_hyp_intf_component_unbind(struct device *dev,
+	struct device *master_dev, void *data)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct cam_hyp_intf_device *cam_hyp_intf_device_p =
 		platform_get_drvdata(pdev);
 
@@ -488,7 +499,7 @@ static int cam_hyp_intf_remove(struct platform_device *pdev)
 			cam_hyp_intf_device_p->cam_hyp_intf_devno, 1);
 		kfree(cam_hyp_intf_device_p);
 	}
-	return 0;
+	return;
 }
 
 MODULE_DEVICE_TABLE(of, msm_cam_hyp_intf_dt_match);
@@ -500,27 +511,49 @@ static const struct of_device_id msm_cam_hyp_intf_dt_match[] = {
 	{}
 };
 
-static struct platform_driver cam_hyp_intf_driver = {
+static const struct component_ops cam_hyp_intf_compoment_ops = {
+	.bind = cam_hyp_intf_component_bind,
+	.unbind = cam_hyp_intf_component_unbind,
+};
+
+static int cam_hyp_intf_probe(struct platform_device *pdev)
+{
+	int rc = 0;
+
+	CAM_DBG(CAM_HYP, "Adding cam_hyp_intf component");
+	rc = component_add(&pdev->dev, &cam_hyp_intf_compoment_ops);
+	if (rc)
+		CAM_ERR(CAM_HYP, "failed to add cam_hyp_intf component rc: %d", rc);
+
+	return rc;
+}
+
+static int cam_hyp_intf_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &cam_hyp_intf_compoment_ops);
+	return 0;
+}
+
+struct platform_driver cam_hyp_intf_driver = {
 	.probe  = cam_hyp_intf_probe,
 	.remove = cam_hyp_intf_remove,
 	.driver = {
 		.name  = "msm_cam_hyp_intf",
 		.owner = THIS_MODULE,
 		.of_match_table = msm_cam_hyp_intf_dt_match,
+		.suppress_bind_attrs = true,
 	},
 };
 
-static int __init cam_hyp_intf_init_module(void)
+int cam_hyp_intf_init_module(void)
 {
 	return platform_driver_register(&cam_hyp_intf_driver);
 }
 
-static void __exit cam_hyp_intf_exit_module(void)
+void cam_hyp_intf_exit_module(void)
 {
 	platform_driver_unregister(&cam_hyp_intf_driver);
 }
 
-module_init(cam_hyp_intf_init_module);
-module_exit(cam_hyp_intf_exit_module);
 MODULE_DESCRIPTION("MSM Camera Hypervisor Interface");
 MODULE_LICENSE("GPL v2");

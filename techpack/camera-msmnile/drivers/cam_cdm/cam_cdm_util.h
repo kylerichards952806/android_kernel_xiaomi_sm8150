@@ -16,6 +16,8 @@
 /* Max len for tag name for header while dumping cmd buffer*/
 #define CAM_CDM_CMD_TAG_MAX_LEN 32
 
+extern struct cam_cdm_utils_ops CDM170_ops;
+
 enum cam_cdm_command {
 	CAM_CDM_CMD_UNUSED = 0x0,
 	CAM_CDM_CMD_DMI = 0x1,

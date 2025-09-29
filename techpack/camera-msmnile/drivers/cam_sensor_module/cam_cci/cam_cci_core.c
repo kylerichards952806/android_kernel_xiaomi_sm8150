@@ -1085,14 +1085,14 @@ static int32_t cam_cci_burst_read(struct v4l2_subdev *sd,
 		spin_unlock_irqrestore(&cci_dev->lock_status, flags);
 
 		if (total_read_words == exp_words) {
-		   /*
-		    * This wait is for RD_DONE irq, if RD_DONE is
-		    * triggered we will call complete on both threshold
-		    * & read done waits. As part of the threshold wait
-		    * we will be draining the entire buffer out. This
-		    * wait is to compensate for the complete invoked for
-		    * RD_DONE exclusively.
-		    */
+			/*
+			 * This wait is for RD_DONE irq, if RD_DONE is
+			 * triggered we will call complete on both threshold
+			 * & read done waits. As part of the threshold wait
+			 * we will be draining the entire buffer out. This
+			 * wait is to compensate for the complete invoked for
+			 * RD_DONE exclusively.
+			 */
 			rem_jiffies = wait_for_completion_timeout(
 			&cci_dev->cci_master_info[master].rd_done,
 			CCI_TIMEOUT);

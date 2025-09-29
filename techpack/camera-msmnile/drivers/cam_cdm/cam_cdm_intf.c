@@ -24,6 +24,7 @@
 #include "cam_cdm_virtual.h"
 #include "cam_soc_util.h"
 #include "cam_cdm_soc.h"
+#include "camera_main.h"
 
 static struct cam_cdm_intf_mgr cdm_mgr;
 static DEFINE_MUTEX(cam_cdm_mgr_lock);
@@ -472,8 +473,10 @@ int cam_cdm_intf_deregister_hw_cdm(struct cam_hw_intf *hw,
 	return rc;
 }
 
-static int cam_cdm_intf_probe(struct platform_device *pdev)
+static int cam_cdm_intf_component_bind(struct device *dev,
+	struct device *master_dev, void *data)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	int i, rc;
 
 	rc = cam_cdm_intf_mgr_soc_get_dt_properties(pdev, &cdm_mgr);
@@ -508,23 +511,25 @@ static int cam_cdm_intf_probe(struct platform_device *pdev)
 		mutex_unlock(&cam_cdm_mgr_lock);
 	}
 
-	CAM_DBG(CAM_CDM, "CDM Intf probe done");
+	CAM_DBG(CAM_CDM, "CDM Intf component bound successfully");
 
 	return rc;
 }
 
-static int cam_cdm_intf_remove(struct platform_device *pdev)
+static void cam_cdm_intf_component_unbind(struct device *dev,
+	struct device *master_dev, void *data)
 {
-	int i, rc = -EBUSY;
+	struct platform_device *pdev = to_platform_device(dev);
+	int i;
 
 	if (get_cdm_mgr_refcount()) {
 		CAM_ERR(CAM_CDM, "CDM intf mgr get refcount failed");
-		return rc;
+		return;
 	}
 
 	if (cam_virtual_cdm_remove(pdev)) {
 		CAM_ERR(CAM_CDM, "Virtual CDM remove failed");
-		goto end;
+		return;
 	}
 	put_cdm_mgr_refcount();
 
@@ -548,35 +553,54 @@ static int cam_cdm_intf_remove(struct platform_device *pdev)
 		cdm_mgr.nodes[i].refcount = 0;
 	}
 	cdm_mgr.probe_done = false;
-	rc = 0;
 
 end:
 	mutex_unlock(&cam_cdm_mgr_lock);
+}
+
+static const struct component_ops cam_cdm_intf_component_ops = {
+	.bind = cam_cdm_intf_component_bind,
+	.unbind = cam_cdm_intf_component_unbind,
+};
+
+static int cam_cdm_intf_probe(struct platform_device *pdev)
+{
+	int rc = 0;
+
+	CAM_DBG(CAM_CDM, "Adding CDM INTF component");
+	rc = component_add(&pdev->dev, &cam_cdm_intf_component_ops);
+	if (rc)
+		CAM_ERR(CAM_CDM, "failed to add component rc: %d", rc);
+
 	return rc;
 }
 
-static struct platform_driver cam_cdm_intf_driver = {
+static int cam_cdm_intf_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &cam_cdm_intf_component_ops);
+	return 0;
+}
+
+struct platform_driver cam_cdm_intf_driver = {
 	.probe = cam_cdm_intf_probe,
 	.remove = cam_cdm_intf_remove,
 	.driver = {
-	.name = "msm_cam_cdm_intf",
-	.owner = THIS_MODULE,
-	.of_match_table = msm_cam_cdm_intf_dt_match,
-	.suppress_bind_attrs = true,
+		.name = "msm_cam_cdm_intf",
+		.owner = THIS_MODULE,
+		.of_match_table = msm_cam_cdm_intf_dt_match,
+		.suppress_bind_attrs = true,
 	},
 };
 
-static int __init cam_cdm_intf_init_module(void)
+int cam_cdm_intf_init_module(void)
 {
 	return platform_driver_register(&cam_cdm_intf_driver);
 }
 
-static void __exit cam_cdm_intf_exit_module(void)
+void cam_cdm_intf_exit_module(void)
 {
 	platform_driver_unregister(&cam_cdm_intf_driver);
 }
 
-module_init(cam_cdm_intf_init_module);
-module_exit(cam_cdm_intf_exit_module);
 MODULE_DESCRIPTION("MSM Camera CDM Intf driver");
 MODULE_LICENSE("GPL v2");

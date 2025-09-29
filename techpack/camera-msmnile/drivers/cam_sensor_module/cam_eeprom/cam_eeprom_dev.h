@@ -38,6 +38,8 @@
 #define MSM_EEPROM_MAX_MEM_MAP_CNT             100
 #define MSM_EEPROM_MEM_MAP_PROPERTIES_CNT      8
 
+#define EEPROM_DRIVER_I2C "cam-i2c-eeprom"
+
 enum cam_eeprom_state {
 	CAM_EEPROM_INIT,
 	CAM_EEPROM_ACQUIRE,
@@ -187,5 +189,16 @@ struct cam_eeprom_ctrl_t {
 
 int32_t cam_eeprom_update_i2c_info(struct cam_eeprom_ctrl_t *e_ctrl,
 	struct cam_eeprom_i2c_info_t *i2c_info);
+
+/**
+ * @brief : API to register EEPROM hw to platform framework.
+ * @return struct platform_device pointer on on success, or ERR_PTR() on error.
+ */
+int cam_eeprom_driver_init(void);
+
+/**
+ * @brief : API to remove EEPROM hw from platform framework.
+ */
+void cam_eeprom_driver_exit(void);
 
 #endif /*_CAM_EEPROM_DEV_H_ */

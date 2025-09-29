@@ -42,7 +42,7 @@
 
 #define CAM_FLASH_PIPELINE_DELAY 1
 
-#define FLASH_DRIVER_I2C "i2c_flash"
+#define FLASH_DRIVER_I2C "cam-i2c-flash"
 
 #define CAM_FLASH_PACKET_OPCODE_INIT                 0
 #define CAM_FLASH_PACKET_OPCODE_SET_OPS              1
@@ -230,5 +230,16 @@ int cam_flash_pmic_flush_request(struct cam_flash_ctrl *fctrl,
 	enum cam_flash_flush_type, uint64_t req_id);
 void cam_flash_shutdown(struct cam_flash_ctrl *fctrl);
 int cam_flash_release_dev(struct cam_flash_ctrl *fctrl);
+
+/**
+ * @brief : API to register FLASH hw to platform framework.
+ * @return struct platform_device pointer on on success, or ERR_PTR() on error.
+ */
+int32_t cam_flash_init_module(void);
+
+/**
+ * @brief : API to remove FLASH hw from platform framework.
+ */
+void cam_flash_exit_module(void);
 
 #endif /*_CAM_FLASH_DEV_H_*/

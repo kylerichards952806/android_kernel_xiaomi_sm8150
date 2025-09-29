@@ -5650,3 +5650,17 @@ dev_init_failed:
 
 	return rc;
 }
+
+void cam_icp_hw_mgr_deinit(void)
+{
+	int i = 0;
+
+	debugfs_remove_recursive(icp_hw_mgr.dentry);
+	icp_hw_mgr.dentry = NULL;
+	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_BPS]);
+	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_IPE]);
+	kfree(icp_hw_mgr.devices[CAM_ICP_DEV_A5]);
+	mutex_destroy(&icp_hw_mgr.hw_mgr_mutex);
+	for (i = 0; i < CAM_ICP_CTX_MAX; i++)
+		mutex_destroy(&icp_hw_mgr.ctx_data[i].ctx_mutex);
+}

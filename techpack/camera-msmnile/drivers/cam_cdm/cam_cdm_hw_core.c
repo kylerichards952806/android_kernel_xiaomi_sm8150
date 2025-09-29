@@ -28,6 +28,7 @@
 #include "cam_cdm_soc.h"
 #include "cam_io_util.h"
 #include "cam_hw_cdm170_reg.h"
+#include "camera_main.h"
 
 #define CAM_HW_CDM_CPAS_0_NAME "qcom,cam170-cpas-cdm0"
 #define CAM_HW_CDM_IPE_0_NAME "qcom,cam170-ipe0-cdm"
@@ -864,9 +865,10 @@ int cam_hw_cdm_deinit(void *hw_priv,
 	return rc;
 }
 
-int cam_hw_cdm_probe(struct platform_device *pdev)
+static int cam_hw_cdm_component_bind(struct device *dev,
+	struct device *master_dev, void *data)
 {
-	int rc;
+	struct platform_device *pdev = to_platform_device(dev);
 	struct cam_hw_info *cdm_hw = NULL;
 	struct cam_hw_intf *cdm_hw_intf = NULL;
 	struct cam_cdm *cdm_core = NULL;
@@ -874,6 +876,7 @@ int cam_hw_cdm_probe(struct platform_device *pdev)
 	struct cam_cpas_register_params cpas_parms;
 	struct cam_ahb_vote ahb_vote;
 	struct cam_axi_vote axi_vote;
+	int rc;
 
 	cdm_hw_intf = kzalloc(sizeof(struct cam_hw_intf), GFP_KERNEL);
 	if (!cdm_hw_intf)
@@ -1047,7 +1050,7 @@ int cam_hw_cdm_probe(struct platform_device *pdev)
 	mutex_unlock(&cdm_hw->hw_mutex);
 	cam_hw_cdm_create_debugfs_entry();
 
-	CAM_DBG(CAM_CDM, "CDM%d probe successful", cdm_hw_intf->hw_idx);
+	CAM_DBG(CAM_CDM, "CDM%d component bound successfully", cdm_hw_intf->hw_idx);
 
 	return rc;
 
@@ -1084,17 +1087,19 @@ release_mem:
 	return rc;
 }
 
-int cam_hw_cdm_remove(struct platform_device *pdev)
+static void cam_hw_cdm_component_unbind(struct device *dev,
+	struct device *master_dev, void *data)
 {
-	int rc = -EBUSY;
+	struct platform_device *pdev = to_platform_device(dev);
 	struct cam_hw_info *cdm_hw = NULL;
 	struct cam_hw_intf *cdm_hw_intf = NULL;
 	struct cam_cdm *cdm_core = NULL;
+	int rc = -EBUSY;
 
 	cdm_hw_intf = platform_get_drvdata(pdev);
 	if (!cdm_hw_intf) {
 		CAM_ERR(CAM_CDM, "Failed to get dev private data");
-		return rc;
+		return;
 	}
 
 	cdm_hw = cdm_hw_intf->hw_priv;
@@ -1102,7 +1107,7 @@ int cam_hw_cdm_remove(struct platform_device *pdev)
 		CAM_ERR(CAM_CDM,
 			"Failed to get hw private data for type=%d idx=%d",
 			cdm_hw_intf->hw_type, cdm_hw_intf->hw_idx);
-		return rc;
+		return;
 	}
 
 	cdm_core = cdm_hw->core_info;
@@ -1110,26 +1115,26 @@ int cam_hw_cdm_remove(struct platform_device *pdev)
 		CAM_ERR(CAM_CDM,
 			"Failed to get hw core data for type=%d idx=%d",
 			cdm_hw_intf->hw_type, cdm_hw_intf->hw_idx);
-		return rc;
+		return;
 	}
 
 	if (cdm_hw->open_count != 0) {
 		CAM_ERR(CAM_CDM, "Hw open count invalid type=%d idx=%d cnt=%d",
 			cdm_hw_intf->hw_type, cdm_hw_intf->hw_idx,
 			cdm_hw->open_count);
-		return rc;
+		return;
 	}
 
 	rc = cam_hw_cdm_deinit(cdm_hw, NULL, 0);
 	if (rc) {
 		CAM_ERR(CAM_CDM, "Deinit failed for hw");
-		return rc;
+		return;
 	}
 
 	rc = cam_cpas_unregister_client(cdm_core->cpas_handle);
 	if (rc) {
 		CAM_ERR(CAM_CDM, "CPAS unregister failed");
-		return rc;
+		return;
 	}
 
 	if (cam_soc_util_release_platform_resource(&cdm_hw->soc_info))
@@ -1148,11 +1153,32 @@ int cam_hw_cdm_remove(struct platform_device *pdev)
 	kfree(cdm_hw_intf);
 	kfree(cdm_hw->core_info);
 	kfree(cdm_hw);
+}
 
+static const struct component_ops cam_hw_cdm_component_ops = {
+	.bind = cam_hw_cdm_component_bind,
+	.unbind = cam_hw_cdm_component_unbind,
+};
+
+int cam_hw_cdm_probe(struct platform_device *pdev)
+{
+	int rc = 0;
+
+	CAM_DBG(CAM_CDM, "Adding HW CDM component");
+	rc = component_add(&pdev->dev, &cam_hw_cdm_component_ops);
+	if (rc)
+		CAM_ERR(CAM_CDM, "failed to add component rc: %d", rc);
+
+	return rc;
+}
+
+int cam_hw_cdm_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &cam_hw_cdm_component_ops);
 	return 0;
 }
 
-static struct platform_driver cam_hw_cdm_driver = {
+struct platform_driver cam_hw_cdm_driver = {
 	.probe = cam_hw_cdm_probe,
 	.remove = cam_hw_cdm_remove,
 	.driver = {
@@ -1163,17 +1189,15 @@ static struct platform_driver cam_hw_cdm_driver = {
 	},
 };
 
-static int __init cam_hw_cdm_init_module(void)
+int cam_hw_cdm_init_module(void)
 {
 	return platform_driver_register(&cam_hw_cdm_driver);
 }
 
-static void __exit cam_hw_cdm_exit_module(void)
+void cam_hw_cdm_exit_module(void)
 {
 	platform_driver_unregister(&cam_hw_cdm_driver);
 }
 
-module_init(cam_hw_cdm_init_module);
-module_exit(cam_hw_cdm_exit_module);
 MODULE_DESCRIPTION("MSM Camera HW CDM driver");
 MODULE_LICENSE("GPL v2");

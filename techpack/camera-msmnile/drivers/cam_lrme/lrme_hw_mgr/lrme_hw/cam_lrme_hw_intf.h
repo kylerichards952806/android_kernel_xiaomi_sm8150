@@ -218,4 +218,15 @@ struct cam_lrme_hw_dump_args {
 	size_t    buf_len;
 };
 
+/**
+ * @brief : API to register LRME hw to platform framework.
+ * @return struct platform_device pointer on on success, or ERR_PTR() on error.
+ */
+int cam_lrme_hw_init_module(void);
+
+/**
+ * @brief : API to remove LRME hw from platform framework.
+ */
+void cam_lrme_hw_exit_module(void);
+
 #endif /* _CAM_LRME_HW_INTF_H_ */

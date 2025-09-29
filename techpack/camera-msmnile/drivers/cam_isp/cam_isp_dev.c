@@ -27,6 +27,7 @@
 #include "cam_node.h"
 #include "cam_debug_util.h"
 #include "cam_smmu_api.h"
+#include "camera_main.h"
 
 static struct cam_isp_dev g_isp_dev;
 
@@ -103,34 +104,14 @@ static const struct v4l2_subdev_internal_ops cam_isp_subdev_internal_ops = {
 	.open = cam_isp_subdev_open,
 };
 
-static int cam_isp_dev_remove(struct platform_device *pdev)
+static int cam_isp_dev_component_bind(struct device *dev,
+	struct device *master_dev, void *data)
 {
-	int rc = 0;
-	int i;
-
-	/* clean up resources */
-	for (i = 0; i < CAM_CTX_MAX; i++) {
-		rc = cam_isp_context_deinit(&g_isp_dev.ctx_isp[i]);
-		if (rc)
-			CAM_ERR(CAM_ISP, "ISP context %d deinit failed",
-				 i);
-	}
-
-	rc = cam_subdev_remove(&g_isp_dev.sd);
-	if (rc)
-		CAM_ERR(CAM_ISP, "Unregister failed");
-
-	memset(&g_isp_dev, 0, sizeof(g_isp_dev));
-	return 0;
-}
-
-static int cam_isp_dev_probe(struct platform_device *pdev)
-{
-	int rc = -1;
-	int i;
+	struct platform_device *pdev = to_platform_device(dev);
 	struct cam_hw_mgr_intf         hw_mgr_intf;
 	struct cam_node               *node;
 	int iommu_hdl = -1;
+	int i, rc = -1;
 
 	g_isp_dev.sd.internal_ops = &cam_isp_subdev_internal_ops;
 	/* Initialze the v4l2 subdevice first. (create cam_node) */
@@ -173,7 +154,7 @@ static int cam_isp_dev_probe(struct platform_device *pdev)
 
 	mutex_init(&g_isp_dev.isp_mutex);
 
-	CAM_INFO(CAM_ISP, "Camera ISP probe complete");
+	CAM_DBG(CAM_ISP, "Camera ISP component bound successfully");
 
 	return 0;
 unregister:
@@ -182,8 +163,50 @@ err:
 	return rc;
 }
 
+static void cam_isp_dev_component_unbind(struct device *dev,
+	struct device *master_dev, void *data)
+{
+	int i, rc = 0;
 
-static struct platform_driver isp_driver = {
+	/* clean up resources */
+	for (i = 0; i < CAM_CTX_MAX; i++) {
+		rc = cam_isp_context_deinit(&g_isp_dev.ctx_isp[i]);
+		if (rc)
+			CAM_ERR(CAM_ISP, "ISP context %d deinit failed",
+				 i);
+	}
+
+	rc = cam_subdev_remove(&g_isp_dev.sd);
+	if (rc)
+		CAM_ERR(CAM_ISP, "Unregister failed");
+
+	memset(&g_isp_dev, 0, sizeof(g_isp_dev));
+}
+
+static const struct component_ops cam_isp_dev_component_ops = {
+	.bind = cam_isp_dev_component_bind,
+	.unbind = cam_isp_dev_component_unbind,
+};
+
+static int cam_isp_dev_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &cam_isp_dev_component_ops);
+	return 0;
+}
+
+static int cam_isp_dev_probe(struct platform_device *pdev)
+{
+	int rc = 0;
+
+	CAM_DBG(CAM_ISP, "Adding ISP dev component");
+	rc = component_add(&pdev->dev, &cam_isp_dev_component_ops);
+	if (rc)
+		CAM_ERR(CAM_ISP, "failed to add component rc: %d", rc);
+
+	return rc;
+}
+
+struct platform_driver isp_driver = {
 	.probe = cam_isp_dev_probe,
 	.remove = cam_isp_dev_remove,
 	.driver = {
@@ -194,17 +217,15 @@ static struct platform_driver isp_driver = {
 	},
 };
 
-static int __init cam_isp_dev_init_module(void)
+int cam_isp_dev_init_module(void)
 {
 	return platform_driver_register(&isp_driver);
 }
 
-static void __exit cam_isp_dev_exit_module(void)
+void cam_isp_dev_exit_module(void)
 {
 	platform_driver_unregister(&isp_driver);
 }
 
-module_init(cam_isp_dev_init_module);
-module_exit(cam_isp_dev_exit_module);
 MODULE_DESCRIPTION("MSM ISP driver");
 MODULE_LICENSE("GPL v2");

@@ -15,6 +15,7 @@
 #include "cam_csiphy_soc.h"
 #include "cam_csiphy_core.h"
 #include <media/cam_sensor.h>
+#include "camera_main.h"
 
 static long cam_csiphy_subdev_ioctl(struct v4l2_subdev *sd,
 	unsigned int cmd, void *arg)
@@ -111,8 +112,10 @@ static const struct v4l2_subdev_internal_ops csiphy_subdev_intern_ops = {
 	.close = cam_csiphy_subdev_close,
 };
 
-static int32_t cam_csiphy_platform_probe(struct platform_device *pdev)
+static int cam_csiphy_component_bind(struct device *dev,
+	struct device *master_dev, void *data)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct cam_cpas_register_params cpas_parms;
 	struct csiphy_device *new_csiphy_dev;
 	int32_t              rc = 0;
@@ -140,7 +143,7 @@ static int32_t cam_csiphy_platform_probe(struct platform_device *pdev)
 	rc = cam_csiphy_parse_dt_info(pdev, new_csiphy_dev);
 	if (rc < 0) {
 		CAM_ERR(CAM_CSIPHY, "DT parsing failed: %d", rc);
-		goto csiphy_no_resource;
+		goto fail;
 	}
 
 	new_csiphy_dev->v4l2_dev_str.internal_ops =
@@ -161,7 +164,7 @@ static int32_t cam_csiphy_platform_probe(struct platform_device *pdev)
 	rc = cam_register_subdev(&(new_csiphy_dev->v4l2_dev_str));
 	if (rc < 0) {
 		CAM_ERR(CAM_CSIPHY, "cam_register_subdev Failed rc: %d", rc);
-		goto csiphy_no_resource;
+		goto fail;
 	}
 
 	platform_set_drvdata(pdev, &(new_csiphy_dev->v4l2_dev_str.sd));
@@ -188,17 +191,21 @@ static int32_t cam_csiphy_platform_probe(struct platform_device *pdev)
 	rc = cam_cpas_register_client(&cpas_parms);
 	if (rc) {
 		CAM_ERR(CAM_CSIPHY, "CPAS registration failed rc: %d", rc);
-		goto csiphy_unregister_subdev;
+		goto register_client_fail;
 	}
 	CAM_DBG(CAM_CSIPHY, "CPAS registration successful handle=%d",
 		cpas_parms.client_handle);
 	new_csiphy_dev->cpas_handle = cpas_parms.client_handle;
 
+	CAM_DBG(CAM_CSIPHY, "%s component bound successfully",
+		pdev->name);
+
 	return rc;
 
-csiphy_unregister_subdev:
+register_client_fail:
+	platform_set_drvdata(pdev, NULL);
 	cam_unregister_subdev(&(new_csiphy_dev->v4l2_dev_str));
-csiphy_no_resource:
+fail:
 	mutex_destroy(&new_csiphy_dev->mutex);
 	kfree(new_csiphy_dev->ctrl_reg);
 	devm_kfree(&pdev->dev, new_csiphy_dev);
@@ -206,14 +213,14 @@ csiphy_no_resource:
 }
 
 
-static int32_t cam_csiphy_device_remove(struct platform_device *pdev)
+static void cam_csiphy_component_unbind(struct device *dev,
+	struct device *master_dev, void *data)
 {
-	struct v4l2_subdev *subdev =
-		platform_get_drvdata(pdev);
-	struct csiphy_device *csiphy_dev =
-		v4l2_get_subdevdata(subdev);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct v4l2_subdev *subdev = platform_get_drvdata(pdev);
+	struct csiphy_device *csiphy_dev = v4l2_get_subdevdata(subdev);
 
-	CAM_INFO(CAM_CSIPHY, "device remove invoked");
+	CAM_INFO(CAM_CSIPHY, "Unbind CSIPHY component");
 	cam_cpas_unregister_client(csiphy_dev->cpas_handle);
 	cam_csiphy_soc_release(csiphy_dev);
 	mutex_lock(&csiphy_dev->mutex);
@@ -225,7 +232,28 @@ static int32_t cam_csiphy_device_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 	v4l2_set_subdevdata(&(csiphy_dev->v4l2_dev_str.sd), NULL);
 	devm_kfree(&pdev->dev, csiphy_dev);
+}
 
+static const struct component_ops cam_csiphy_component_ops = {
+	.bind = cam_csiphy_component_bind,
+	.unbind = cam_csiphy_component_unbind,
+};
+
+static int32_t cam_csiphy_platform_probe(struct platform_device *pdev)
+{
+	int rc = 0;
+
+	CAM_DBG(CAM_CSIPHY, "Adding CSIPHY component");
+	rc = component_add(&pdev->dev, &cam_csiphy_component_ops);
+	if (rc)
+		CAM_ERR(CAM_CSIPHY, "failed to add component rc: %d", rc);
+
+	return rc;
+}
+
+static int32_t cam_csiphy_device_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &cam_csiphy_component_ops);
 	return 0;
 }
 
@@ -233,10 +261,9 @@ static const struct of_device_id cam_csiphy_dt_match[] = {
 	{.compatible = "qcom,csiphy"},
 	{}
 };
-
 MODULE_DEVICE_TABLE(of, cam_csiphy_dt_match);
 
-static struct platform_driver csiphy_driver = {
+struct platform_driver csiphy_driver = {
 	.probe = cam_csiphy_platform_probe,
 	.remove = cam_csiphy_device_remove,
 	.driver = {
@@ -247,17 +274,15 @@ static struct platform_driver csiphy_driver = {
 	},
 };
 
-static int32_t __init cam_csiphy_init_module(void)
+int32_t cam_csiphy_init_module(void)
 {
 	return platform_driver_register(&csiphy_driver);
 }
 
-static void __exit cam_csiphy_exit_module(void)
+void cam_csiphy_exit_module(void)
 {
 	platform_driver_unregister(&csiphy_driver);
 }
 
-module_init(cam_csiphy_init_module);
-module_exit(cam_csiphy_exit_module);
 MODULE_DESCRIPTION("CAM CSIPHY driver");
 MODULE_LICENSE("GPL v2");

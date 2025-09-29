@@ -24,6 +24,7 @@
 #include "cam_icp_hw_mgr_intf.h"
 #include "cam_cpas_api.h"
 #include "cam_debug_util.h"
+#include "camera_main.h"
 
 static struct cam_bps_device_hw_info cam_bps_hw_info = {
 	.hw_idx = 0,
@@ -31,7 +32,6 @@ static struct cam_bps_device_hw_info cam_bps_hw_info = {
 	.pwr_status = 0x58,
 	.reserved = 0,
 };
-EXPORT_SYMBOL(cam_bps_hw_info);
 
 static char bps_dev_name[8];
 
@@ -92,8 +92,10 @@ int cam_bps_register_cpas(struct cam_hw_soc_info *soc_info,
 	return rc;
 }
 
-int cam_bps_probe(struct platform_device *pdev)
+static int cam_bps_component_bind(struct device *dev,
+	struct device *master_dev, void *data)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct cam_hw_info            *bps_dev = NULL;
 	struct cam_hw_intf            *bps_dev_intf = NULL;
 	const struct of_device_id         *match_dev = NULL;
@@ -173,10 +175,53 @@ int cam_bps_probe(struct platform_device *pdev)
 	mutex_init(&bps_dev->hw_mutex);
 	spin_lock_init(&bps_dev->hw_lock);
 	init_completion(&bps_dev->hw_complete);
-	CAM_DBG(CAM_ICP, "BPS%d probe successful",
+	CAM_DBG(CAM_ICP, "BPS:%d component bound successfully",
 		bps_dev_intf->hw_idx);
 
 	return rc;
+}
+
+static void cam_bps_component_unbind(struct device *dev,
+	struct device *master_dev, void *data)
+{
+	struct cam_hw_info                *bps_dev = NULL;
+	struct cam_hw_intf                *bps_dev_intf = NULL;
+	struct cam_bps_device_core_info   *core_info = NULL;
+	struct platform_device            *pdev = to_platform_device(dev);
+
+	CAM_DBG(CAM_ICP, "Unbinding component: %s", pdev->name);
+	bps_dev_intf = platform_get_drvdata(pdev);
+	bps_dev = bps_dev_intf->hw_priv;
+	core_info = (struct cam_bps_device_core_info *)bps_dev->core_info;
+	cam_cpas_unregister_client(core_info->cpas_handle);
+	cam_bps_deinit_soc_resources(&bps_dev->soc_info);
+
+	kfree(bps_dev->core_info);
+	kfree(bps_dev);
+	kfree(bps_dev_intf);
+}
+
+static const struct component_ops cam_bps_component_ops = {
+	.bind = cam_bps_component_bind,
+	.unbind = cam_bps_component_unbind,
+};
+
+int cam_bps_probe(struct platform_device *pdev)
+{
+	int rc = 0;
+
+	CAM_DBG(CAM_ICP, "Adding BPS component");
+	rc = component_add(&pdev->dev, &cam_bps_component_ops);
+	if (rc)
+		CAM_ERR(CAM_ICP, "failed to add component rc: %d", rc);
+
+	return rc;
+}
+
+static int cam_bps_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &cam_bps_component_ops);
+	return 0;
 }
 
 static const struct of_device_id cam_bps_dt_match[] = {
@@ -188,8 +233,9 @@ static const struct of_device_id cam_bps_dt_match[] = {
 };
 MODULE_DEVICE_TABLE(of, cam_bps_dt_match);
 
-static struct platform_driver cam_bps_driver = {
+struct platform_driver cam_bps_driver = {
 	.probe = cam_bps_probe,
+	.remove = cam_bps_remove,
 	.driver = {
 		.name = "cam-bps",
 		.owner = THIS_MODULE,
@@ -198,17 +244,15 @@ static struct platform_driver cam_bps_driver = {
 	},
 };
 
-static int __init cam_bps_init_module(void)
+int cam_bps_init_module(void)
 {
 	return platform_driver_register(&cam_bps_driver);
 }
 
-static void __exit cam_bps_exit_module(void)
+void cam_bps_exit_module(void)
 {
 	platform_driver_unregister(&cam_bps_driver);
 }
 
-module_init(cam_bps_init_module);
-module_exit(cam_bps_exit_module);
 MODULE_DESCRIPTION("CAM BPS driver");
 MODULE_LICENSE("GPL v2");

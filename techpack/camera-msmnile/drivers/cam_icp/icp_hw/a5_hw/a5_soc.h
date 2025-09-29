@@ -25,6 +25,8 @@ struct a5_soc_info {
 int cam_a5_init_soc_resources(struct cam_hw_soc_info *soc_info,
 	irq_handler_t a5_irq_handler, void *irq_data);
 
+void cam_a5_deinit_soc_resources(struct cam_hw_soc_info *soc_info);
+
 int cam_a5_enable_soc_resources(struct cam_hw_soc_info *soc_info);
 
 int cam_a5_disable_soc_resources(struct cam_hw_soc_info *soc_info);

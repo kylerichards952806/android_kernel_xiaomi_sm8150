@@ -19,6 +19,7 @@
 #include "cam_sync_util.h"
 #include "cam_debug_util.h"
 #include "cam_common_util.h"
+#include "camera_main.h"
 
 struct sync_device *sync_dev;
 
@@ -1018,10 +1019,11 @@ static int cam_sync_create_debugfs(void)
 	return 0;
 }
 
-static int cam_sync_probe(struct platform_device *pdev)
+static int cam_sync_component_bind(struct device *dev,
+	struct device *master_dev, void *data)
 {
-	int rc;
-	int idx;
+	struct platform_device *pdev = to_platform_device(dev);
+	int idx, rc;
 
 	sync_dev = kzalloc(sizeof(*sync_dev), GFP_KERNEL);
 	if (!sync_dev)
@@ -1052,7 +1054,7 @@ static int cam_sync_probe(struct platform_device *pdev)
 
 	strlcpy(sync_dev->vdev->name, CAM_SYNC_NAME,
 				sizeof(sync_dev->vdev->name));
-	sync_dev->vdev->release  = video_device_release;
+	sync_dev->vdev->release  = video_device_release_empty;
 	sync_dev->vdev->fops     = &cam_sync_v4l2_fops;
 	sync_dev->vdev->ioctl_ops = &g_cam_sync_ioctl_ops;
 	sync_dev->vdev->minor     = -1;
@@ -1092,6 +1094,8 @@ static int cam_sync_probe(struct platform_device *pdev)
 	trigger_cb_without_switch = false;
 	cam_sync_create_debugfs();
 
+	CAM_DBG(CAM_SYNC, "Component bound successfully");
+
 	return rc;
 
 v4l2_fail:
@@ -1099,6 +1103,7 @@ v4l2_fail:
 register_fail:
 	cam_sync_media_controller_cleanup(sync_dev);
 mcinit_fail:
+	video_unregister_device(sync_dev->vdev);
 	video_device_release(sync_dev->vdev);
 vdev_fail:
 	mutex_destroy(&sync_dev->table_lock);
@@ -1106,57 +1111,72 @@ vdev_fail:
 	return rc;
 }
 
-static int cam_sync_remove(struct platform_device *pdev)
+static void cam_sync_component_unbind(struct device *dev,
+	struct device *master_dev, void *data)
 {
+	int i;
+
 	v4l2_device_unregister(sync_dev->vdev->v4l2_dev);
 	cam_sync_media_controller_cleanup(sync_dev);
+	video_unregister_device(sync_dev->vdev);
 	video_device_release(sync_dev->vdev);
 	debugfs_remove_recursive(sync_dev->dentry);
 	sync_dev->dentry = NULL;
+	for (i = 0; i < CAM_SYNC_MAX_OBJS; i++)
+		spin_lock_init(&sync_dev->row_spinlocks[i]);
 	kfree(sync_dev);
 	sync_dev = NULL;
+}
 
+static const struct component_ops cam_sync_component_ops = {
+	.bind = cam_sync_component_bind,
+	.unbind = cam_sync_component_unbind,
+};
+
+static int cam_sync_probe(struct platform_device *pdev)
+{
+	int rc = 0;
+
+	CAM_DBG(CAM_SYNC, "Adding Sync component");
+	rc = component_add(&pdev->dev, &cam_sync_component_ops);
+	if (rc)
+		CAM_ERR(CAM_SYNC, "failed to add component rc: %d", rc);
+
+	return rc;
+}
+
+static int cam_sync_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &cam_sync_component_ops);
 	return 0;
 }
 
-static struct platform_device cam_sync_device = {
-	.name = "cam_sync",
-	.id = -1,
+static const struct of_device_id cam_sync_dt_match[] = {
+	{.compatible = "qcom,cam-sync"},
+	{}
 };
+MODULE_DEVICE_TABLE(of, cam_sync_dt_match);
 
-static struct platform_driver cam_sync_driver = {
+struct platform_driver cam_sync_driver = {
 	.probe = cam_sync_probe,
 	.remove = cam_sync_remove,
 	.driver = {
 		.name = "cam_sync",
 		.owner = THIS_MODULE,
+		.of_match_table = cam_sync_dt_match,
 		.suppress_bind_attrs = true,
 	},
 };
 
-static int __init cam_sync_init(void)
+int cam_sync_init(void)
 {
-	int rc;
-
-	rc = platform_device_register(&cam_sync_device);
-	if (rc)
-		return -ENODEV;
-
 	return platform_driver_register(&cam_sync_driver);
 }
 
-static void __exit cam_sync_exit(void)
+void cam_sync_exit(void)
 {
-	int idx;
-
-	for (idx = 0; idx < CAM_SYNC_MAX_OBJS; idx++)
-		spin_lock_init(&sync_dev->row_spinlocks[idx]);
 	platform_driver_unregister(&cam_sync_driver);
-	platform_device_unregister(&cam_sync_device);
-	kfree(sync_dev);
 }
 
-module_init(cam_sync_init);
-module_exit(cam_sync_exit);
 MODULE_DESCRIPTION("Camera sync driver");
 MODULE_LICENSE("GPL v2");

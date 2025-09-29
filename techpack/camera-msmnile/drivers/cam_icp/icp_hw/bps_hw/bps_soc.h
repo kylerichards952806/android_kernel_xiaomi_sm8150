@@ -18,6 +18,8 @@
 int cam_bps_init_soc_resources(struct cam_hw_soc_info *soc_info,
 	irq_handler_t bps_irq_handler, void *irq_data);
 
+void cam_bps_deinit_soc_resources(struct cam_hw_soc_info *soc_info);
+
 int cam_bps_enable_soc_resources(struct cam_hw_soc_info *soc_info);
 
 int cam_bps_disable_soc_resources(struct cam_hw_soc_info *soc_info,

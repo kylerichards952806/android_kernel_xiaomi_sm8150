@@ -32,7 +32,7 @@ static const struct of_device_id cam_csid_ppi170_dt_match[] = {
 
 MODULE_DEVICE_TABLE(of, cam_csid_ppi170_dt_match);
 
-static struct platform_driver cam_csid_ppi170_driver = {
+struct platform_driver cam_csid_ppi170_driver = {
 	.probe  = cam_csid_ppi_probe,
 	.remove = cam_csid_ppi_remove,
 	.driver = {
@@ -43,16 +43,15 @@ static struct platform_driver cam_csid_ppi170_driver = {
 	},
 };
 
-static int __init cam_csid_ppi170_init_module(void)
+int cam_csid_ppi170_init_module(void)
 {
 	return platform_driver_register(&cam_csid_ppi170_driver);
 }
 
-static void __exit cam_csid_ppi170_exit_module(void)
+void cam_csid_ppi170_exit_module(void)
 {
 	platform_driver_unregister(&cam_csid_ppi170_driver);
 }
 
-module_init(cam_csid_ppi170_init_module);
 MODULE_DESCRIPTION("CAM CSID_PPI170 driver");
 MODULE_LICENSE("GPL v2");

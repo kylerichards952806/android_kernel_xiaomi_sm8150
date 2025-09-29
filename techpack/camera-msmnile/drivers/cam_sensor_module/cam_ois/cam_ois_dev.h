@@ -32,6 +32,8 @@
 #define DEFINE_MSM_MUTEX(mutexname) \
 	static struct mutex mutexname = __MUTEX_INITIALIZER(mutexname)
 
+#define OIS_DRIVER_I2C "cam-i2c-ois"
+
 enum cam_ois_state {
 	CAM_OIS_INIT,
 	CAM_OIS_ACQUIRE,
@@ -130,5 +132,16 @@ struct cam_ois_ctrl_t {
 	uint8_t is_ois_calib;
 	struct cam_ois_opcode opcode;
 };
+
+/**
+ * @brief : API to register OIS hw to platform framework.
+ * @return struct platform_device pointer on on success, or ERR_PTR() on error.
+ */
+int cam_ois_driver_init(void);
+
+/**
+ * @brief : API to remove OIS hw from platform framework.
+ */
+void cam_ois_driver_exit(void);
 
 #endif /*_CAM_OIS_DEV_H_ */

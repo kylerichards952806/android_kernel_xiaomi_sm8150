@@ -13,6 +13,7 @@
 #include <linux/slab.h>
 #include <linux/mod_devicetable.h>
 #include <linux/of_device.h>
+#include <linux/component.h>
 
 #include "cam_isp_hw.h"
 #include "cam_hw_intf.h"
@@ -24,8 +25,10 @@ static struct cam_hw_intf *cam_csid_ppi_hw_list[CAM_CSID_PPI_HW_MAX] = {
 	NULL, NULL, NULL, NULL};
 static char ppi_dev_name[8];
 
-int cam_csid_ppi_probe(struct platform_device *pdev)
+static int cam_csid_ppi_component_bind(struct device *dev,
+	struct device *master_dev, void *data)
 {
+	struct platform_device        *pdev = to_platform_device(dev);
 	struct cam_hw_intf            *ppi_hw_intf;
 	struct cam_hw_info            *ppi_hw_info;
 	struct cam_csid_ppi_hw        *ppi_dev = NULL;
@@ -34,7 +37,7 @@ int cam_csid_ppi_probe(struct platform_device *pdev)
 	uint32_t                       ppi_dev_idx;
 	int                            rc = 0;
 
-	CAM_DBG(CAM_ISP, "PPI probe called");
+	CAM_DBG(CAM_ISP, "Binding CSID PPI component");
 
 	ppi_hw_intf = kzalloc(sizeof(struct cam_hw_intf), GFP_KERNEL);
 	if (!ppi_hw_intf) {
@@ -84,12 +87,12 @@ int cam_csid_ppi_probe(struct platform_device *pdev)
 
 	rc = cam_csid_ppi_hw_probe_init(ppi_hw_intf, ppi_dev_idx);
 	if (rc) {
-		CAM_ERR(CAM_ISP, "PPI: Probe init failed!");
+		CAM_ERR(CAM_ISP, "PPI: component bind failed!");
 		goto free_dev;
 	}
 
 	platform_set_drvdata(pdev, ppi_dev);
-	CAM_DBG(CAM_ISP, "PPI:%d probe successful",
+	CAM_DBG(CAM_ISP, "PPI:%d component bound successfully",
 		ppi_hw_intf->hw_idx);
 
 	if (ppi_hw_intf->hw_idx < CAM_CSID_PPI_HW_MAX)
@@ -108,8 +111,10 @@ err:
 	return rc;
 }
 
-int cam_csid_ppi_remove(struct platform_device *pdev)
+static void cam_csid_ppi_component_unbind(struct device *dev,
+	struct device *master_dev, void *data)
 {
+	struct platform_device         *pdev = to_platform_device(dev);
 	struct cam_csid_ppi_hw         *ppi_dev = NULL;
 	struct cam_hw_intf             *ppi_hw_intf;
 	struct cam_hw_info             *ppi_hw_info;
@@ -126,6 +131,28 @@ int cam_csid_ppi_remove(struct platform_device *pdev)
 	kfree(ppi_dev);
 	kfree(ppi_hw_info);
 	kfree(ppi_hw_intf);
+}
+
+const static struct component_ops cam_csid_ppi_component_ops = {
+	.bind = cam_csid_ppi_component_bind,
+	.unbind = cam_csid_ppi_component_unbind,
+};
+
+int cam_csid_ppi_probe(struct platform_device *pdev)
+{
+	int rc = 0;
+
+	CAM_DBG(CAM_ISP, "Adding CSID PPI component");
+	rc = component_add(&pdev->dev, &cam_csid_ppi_component_ops);
+	if (rc)
+		CAM_ERR(CAM_ISP, "failed to add component rc: %d", rc);
+
+	return rc;
+}
+
+int cam_csid_ppi_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &cam_csid_ppi_component_ops);
 	return 0;
 }
 

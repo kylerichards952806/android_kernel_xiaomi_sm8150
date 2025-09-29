@@ -111,6 +111,15 @@ int cam_ipe_init_soc_resources(struct cam_hw_soc_info *soc_info,
 	return rc;
 }
 
+void cam_ipe_deinit_soc_resources(struct cam_hw_soc_info *soc_info)
+{
+	int rc = 0;
+
+	rc = cam_soc_util_release_platform_resource(soc_info);
+	if (rc)
+		CAM_WARN(CAM_ICP, "release platform resources fail");
+}
+
 int cam_ipe_enable_soc_resources(struct cam_hw_soc_info *soc_info)
 {
 	int rc = 0;

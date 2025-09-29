@@ -18,13 +18,16 @@
 #include "cam_vfe_core.h"
 #include "cam_vfe_soc.h"
 #include "cam_debug_util.h"
+#include "camera_main.h"
 
 static struct cam_hw_intf *cam_vfe_hw_list[CAM_VFE_HW_NUM_MAX] = {0, 0, 0, 0};
 
 static char vfe_dev_name[8];
 
-int cam_vfe_probe(struct platform_device *pdev)
+static int cam_vfe_component_bind(struct device *dev,
+	struct device *master_dev, void *data)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct cam_hw_info                *vfe_hw = NULL;
 	struct cam_hw_intf                *vfe_hw_intf = NULL;
 	const struct of_device_id         *match_dev = NULL;
@@ -68,7 +71,7 @@ int cam_vfe_probe(struct platform_device *pdev)
 	vfe_hw_intf->hw_ops.process_cmd = cam_vfe_process_cmd;
 	vfe_hw_intf->hw_type = CAM_ISP_HW_TYPE_VFE;
 
-	CAM_DBG(CAM_ISP, "type %d index %d",
+	CAM_DBG(CAM_ISP, "VFE component bind, type %d index %d",
 		vfe_hw_intf->hw_type, vfe_hw_intf->hw_idx);
 
 	platform_set_drvdata(pdev, vfe_hw_intf);
@@ -117,7 +120,7 @@ int cam_vfe_probe(struct platform_device *pdev)
 	cam_vfe_init_hw(vfe_hw, NULL, 0);
 	cam_vfe_deinit_hw(vfe_hw, NULL, 0);
 
-	CAM_DBG(CAM_ISP, "VFE%d probe successful", vfe_hw_intf->hw_idx);
+	CAM_DBG(CAM_ISP, "VFE%d component bound successfully", vfe_hw_intf->hw_idx);
 
 	return rc;
 
@@ -134,8 +137,10 @@ end:
 	return rc;
 }
 
-int cam_vfe_remove(struct platform_device *pdev)
+static void cam_vfe_component_unbind(struct device *dev,
+	struct device *master_dev, void *data)
 {
+	struct platform_device            *pdev = to_platform_device(dev);
 	struct cam_hw_info                *vfe_hw = NULL;
 	struct cam_hw_intf                *vfe_hw_intf = NULL;
 	struct cam_vfe_hw_core_info       *core_info = NULL;
@@ -144,10 +149,10 @@ int cam_vfe_remove(struct platform_device *pdev)
 	vfe_hw_intf = platform_get_drvdata(pdev);
 	if (!vfe_hw_intf) {
 		CAM_ERR(CAM_ISP, "Error! No data in pdev");
-		return -EINVAL;
+		return;
 	}
 
-	CAM_DBG(CAM_ISP, "type %d index %d",
+	CAM_DBG(CAM_ISP, "VFE component unbind, type %d index %d",
 		vfe_hw_intf->hw_type, vfe_hw_intf->hw_idx);
 
 	if (vfe_hw_intf->hw_idx < CAM_VFE_HW_NUM_MAX)
@@ -156,14 +161,12 @@ int cam_vfe_remove(struct platform_device *pdev)
 	vfe_hw = vfe_hw_intf->hw_priv;
 	if (!vfe_hw) {
 		CAM_ERR(CAM_ISP, "Error! HW data is NULL");
-		rc = -ENODEV;
 		goto free_vfe_hw_intf;
 	}
 
 	core_info = (struct cam_vfe_hw_core_info *)vfe_hw->core_info;
 	if (!core_info) {
 		CAM_ERR(CAM_ISP, "Error! core data NULL");
-		rc = -EINVAL;
 		goto deinit_soc;
 	}
 
@@ -181,12 +184,33 @@ deinit_soc:
 	mutex_destroy(&vfe_hw->hw_mutex);
 	kfree(vfe_hw);
 
-	CAM_DBG(CAM_ISP, "VFE%d remove successful", vfe_hw_intf->hw_idx);
+	CAM_DBG(CAM_ISP, "VFE%d component unbound", vfe_hw_intf->hw_idx);
 
 free_vfe_hw_intf:
 	kfree(vfe_hw_intf);
+}
+
+static const struct component_ops cam_vfe_component_ops = {
+	.bind = cam_vfe_component_bind,
+	.unbind = cam_vfe_component_unbind,
+};
+
+int cam_vfe_probe(struct platform_device *pdev)
+{
+	int rc = 0;
+
+	CAM_DBG(CAM_ISP, "Adding VFE component");
+	rc = component_add(&pdev->dev, &cam_vfe_component_ops);
+	if (rc)
+		CAM_ERR(CAM_ISP, "failed to add component rc: %d", rc);
 
 	return rc;
+}
+
+int cam_vfe_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &cam_vfe_component_ops);
+	return 0;
 }
 
 int cam_vfe_hw_init(struct cam_hw_intf **vfe_hw, uint32_t hw_idx)
