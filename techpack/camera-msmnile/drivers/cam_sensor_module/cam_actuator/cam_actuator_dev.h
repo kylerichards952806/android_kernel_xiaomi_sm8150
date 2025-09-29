@@ -39,9 +39,6 @@
 #define NUM_MASTERS 2
 #define NUM_QUEUES 2
 
-#define TRUE  1
-#define FALSE 0
-
 #define ACTUATOR_DRIVER_I2C "i2c_actuator"
 #define CAMX_ACTUATOR_DEV_NAME "cam-actuator-driver"
 
