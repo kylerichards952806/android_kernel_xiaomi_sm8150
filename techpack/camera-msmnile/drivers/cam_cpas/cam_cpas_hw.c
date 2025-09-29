@@ -13,7 +13,6 @@
 #include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
-#include <linux/msm-bus.h>
 #include <linux/pm_opp.h>
 #include <linux/slab.h>
 #include <linux/module.h>
@@ -24,6 +23,131 @@
 
 static uint cam_min_camnoc_ib_bw;
 module_param(cam_min_camnoc_ib_bw, uint, 0644);
+
+static int cam_cpas_util_parse_bus_node(struct platform_device *pdev,
+	struct device_node *of_node, struct cam_cpas_bus_client *bus_client)
+{
+	struct of_phandle_args src_args = {0}, dst_args = {0};
+	int i = 0, rc = 0, num_bw_values = 0, num_levels = 0;
+
+	if (bus_client && of_node) {
+		bool bus_icc_based = of_property_read_bool(of_node,
+			"interconnects");
+
+		if (bus_icc_based) {
+			rc = of_property_read_string(of_node, "interconnect-names",
+				&bus_client->common_data.name);
+			if (rc) {
+				CAM_ERR(CAM_CPAS,
+					"device %s failed to read interconnect-names",
+					pdev->name);
+				return rc;
+			}
+
+			rc = of_parse_phandle_with_args(of_node, "interconnects",
+				"#interconnect-cells", 0, &src_args);
+			if (rc) {
+				CAM_ERR(CAM_CPAS,
+					"device %s failed to read bus src info",
+					pdev->name);
+				return rc;
+			}
+
+			of_node_put(src_args.np);
+			if (src_args.args_count != 1) {
+				CAM_ERR(CAM_CPAS,
+					"Invalid number of src args: %d",
+					src_args.args_count);
+				return -EINVAL;
+			}
+
+			bus_client->common_data.src_id = src_args.args[0];
+
+			rc = of_parse_phandle_with_args(of_node, "interconnects",
+				"#interconnect-cells", 1, &dst_args);
+			if (rc) {
+				CAM_ERR(CAM_CPAS,
+					"device %s failed to read bus dst info",
+					pdev->name);
+				return rc;
+			}
+
+			of_node_put(dst_args.np);
+			if (dst_args.args_count != 1) {
+				CAM_ERR(CAM_CPAS,
+					"Invalid number of ahb dst args: %d",
+					dst_args.args_count);
+				return -EINVAL;
+			}
+
+			bus_client->common_data.dst_id = dst_args.args[0];
+
+			bus_client->dyn_vote = of_property_read_bool(of_node, "bus-dyn-vote");
+
+			rc = of_property_read_u32(of_node, "bus-num-cases",
+				&bus_client->common_data.num_usecases);
+			if (rc) {
+				CAM_ERR(CAM_CPAS,
+					"device %s failed to read ahb num usecases",
+					pdev->name);
+				return rc;
+			}
+
+			if (bus_client->common_data.num_usecases >
+				CAM_SOC_BUS_MAX_NUM_USECASES) {
+				CAM_ERR(CAM_UTIL, "Invalid number of usecases: %d",
+					bus_client->common_data.num_usecases);
+				return -EINVAL;
+			}
+
+			num_bw_values = of_property_count_u32_elems(of_node,
+				"bus-bw-KBps");
+			if (num_bw_values <= 0) {
+				CAM_ERR(CAM_UTIL, "Error counting ahb bw values");
+				return -EINVAL;
+			}
+
+			CAM_DBG(CAM_CPAS, "AHB: num bw values %d", num_bw_values);
+			num_levels = (num_bw_values / 2);
+
+			if (num_levels !=
+				bus_client->common_data.num_usecases) {
+				CAM_ERR(CAM_UTIL, "Invalid number of levels: %d",
+					num_bw_values / 2);
+				return -EINVAL;
+			}
+
+			for (i = 0; i < num_levels; i++) {
+				rc = of_property_read_u32_index(of_node,
+					"bus-bw-KBps", (i * 2),
+					(uint32_t *)&bus_client->common_data.bw_pair[i].ab);
+				if (rc) {
+					CAM_ERR(CAM_UTIL,
+						"Error reading ab bw value, rc=%d",
+						rc);
+					return rc;
+				}
+
+				rc = of_property_read_u32_index(of_node,
+					"bus-bw-KBps", (i * 2 + 1),
+					(uint32_t *)&bus_client->common_data.bw_pair[i].ib);
+				if (rc) {
+					CAM_ERR(CAM_UTIL,
+						"Error reading ib bw value, rc=%d",
+						rc);
+					return rc;
+				}
+
+				CAM_DBG(CAM_CPAS,
+					"AHB: Level: %d, ab_value %llu, ib_value: %llu",
+					i, bus_client->common_data.bw_pair[i].ab,
+					bus_client->common_data.bw_pair[i].ib);
+			}
+		}
+	}
+
+	return rc;
+}
 
 int cam_cpas_util_reg_update(struct cam_hw_info *cpas_hw,
 	enum cam_cpas_reg_base reg_base, struct cam_cpas_reg *reg_info)
@@ -62,24 +186,32 @@ int cam_cpas_util_reg_update(struct cam_hw_info *cpas_hw,
 static int cam_cpas_util_vote_bus_client_level(
 	struct cam_cpas_bus_client *bus_client, unsigned int level)
 {
+	int rc = 0;
+
 	if (!bus_client->valid || (bus_client->dyn_vote == true)) {
 		CAM_ERR(CAM_CPAS, "Invalid params %d %d", bus_client->valid,
 			bus_client->dyn_vote);
 		return -EINVAL;
 	}
 
-	if (level >= bus_client->num_usecases) {
+	if (level >= bus_client->common_data.num_usecases) {
 		CAM_ERR(CAM_CPAS, "Invalid vote level=%d, usecases=%d", level,
-			bus_client->num_usecases);
+			bus_client->common_data.num_usecases);
 		return -EINVAL;
 	}
 
 	if (level == bus_client->curr_vote_level)
 		return 0;
 
-	CAM_DBG(CAM_CPAS, "Bus client=[%d][%s] index[%d]",
-		bus_client->client_id, bus_client->name, level);
-	msm_bus_scale_client_update_request(bus_client->client_id, level);
+	rc = cam_soc_bus_client_update_request(
+		bus_client->soc_bus_client, level);
+	if (rc) {
+		CAM_ERR(CAM_CPAS,
+			"Client: %s update request failed rc: %d",
+			bus_client->common_data.name, rc);
+		return rc;
+	}
+
 	bus_client->curr_vote_level = level;
 
 	return 0;
@@ -89,10 +221,8 @@ static int cam_cpas_util_vote_bus_client_bw(
 	struct cam_cpas_bus_client *bus_client, uint64_t ab, uint64_t ib,
 	bool camnoc_bw)
 {
-	struct msm_bus_paths *path;
-	struct msm_bus_scale_pdata *pdata;
-	int idx = 0;
 	uint64_t min_camnoc_ib_bw = CAM_CPAS_AXI_MIN_CAMNOC_IB_BW;
+	int rc = 0;
 
 	if (cam_min_camnoc_ib_bw > 0)
 		min_camnoc_ib_bw = (uint64_t)cam_min_camnoc_ib_bw * 1000000L;
@@ -105,15 +235,6 @@ static int cam_cpas_util_vote_bus_client_bw(
 		return -EINVAL;
 	}
 
-	if ((bus_client->num_usecases != 2) ||
-		(bus_client->num_paths != 1) ||
-		(bus_client->dyn_vote != true)) {
-		CAM_ERR(CAM_CPAS, "dynamic update not allowed %d %d %d",
-			bus_client->num_usecases, bus_client->num_paths,
-			bus_client->dyn_vote);
-		return -EINVAL;
-	}
-
 	mutex_lock(&bus_client->lock);
 
 	if (bus_client->curr_vote_level > 1) {
@@ -123,12 +244,9 @@ static int cam_cpas_util_vote_bus_client_bw(
 		return -EINVAL;
 	}
 
-	idx = bus_client->curr_vote_level;
-	idx = 1 - idx;
-	bus_client->curr_vote_level = idx;
 	mutex_unlock(&bus_client->lock);
 
-	if (camnoc_bw == true) {
+	if (camnoc_bw) {
 		if ((ab > 0) && (ab < CAM_CPAS_AXI_MIN_CAMNOC_AB_BW))
 			ab = CAM_CPAS_AXI_MIN_CAMNOC_AB_BW;
 
@@ -142,14 +260,12 @@ static int cam_cpas_util_vote_bus_client_bw(
 			ib = CAM_CPAS_AXI_MIN_MNOC_IB_BW;
 	}
 
-	pdata = bus_client->pdata;
-	path = &(pdata->usecase[idx]);
-	path->vectors[0].ab = ab;
-	path->vectors[0].ib = ib;
-
-	CAM_DBG(CAM_CPAS, "Bus client=[%d][%s] :ab[%llu] ib[%llu], index[%d]",
-		bus_client->client_id, bus_client->name, ab, ib, idx);
-	msm_bus_scale_client_update_request(bus_client->client_id, idx);
+	rc = cam_soc_bus_client_update_bw(bus_client->soc_bus_client, ab, ib);
+	if (rc) {
+		CAM_ERR(CAM_CPAS,
+			"Update bw failed, ab[%llu] ib[%llu]", ab, ib);
+		return rc;
+	}
 
 	return 0;
 }
@@ -158,62 +274,30 @@ static int cam_cpas_util_register_bus_client(
 	struct cam_hw_soc_info *soc_info, struct device_node *dev_node,
 	struct cam_cpas_bus_client *bus_client)
 {
-	struct msm_bus_scale_pdata *pdata = NULL;
-	uint32_t client_id;
-	int rc;
+	int rc = 0;
 
-	pdata = msm_bus_pdata_from_node(soc_info->pdev,
-		dev_node);
-	if (!pdata) {
-		CAM_ERR(CAM_CPAS, "failed get_pdata");
-		return -EINVAL;
+	rc = cam_cpas_util_parse_bus_node(soc_info->pdev,
+		dev_node, bus_client);
+	if (rc) {
+		CAM_ERR(CAM_CPAS,
+			"Bus client: %s parse dt node failed failed, rc: %d",
+			bus_client->common_data.name, rc);
+		return rc;
 	}
 
-	if ((pdata->num_usecases == 0) ||
-		(pdata->usecase[0].num_paths == 0)) {
-		CAM_ERR(CAM_CPAS, "usecase=%d", pdata->num_usecases);
-		rc = -EINVAL;
-		goto error;
+	rc = cam_soc_bus_client_register(soc_info->pdev, dev_node,
+		&bus_client->soc_bus_client, &bus_client->common_data);
+	if (rc) {
+		CAM_ERR(CAM_CPAS,
+			"Bus client: %s registertion failed, rc: %d",
+			bus_client->common_data.name, rc);
+		return rc;
 	}
 
-	client_id = msm_bus_scale_register_client(pdata);
-	if (!client_id) {
-		CAM_ERR(CAM_CPAS, "failed in register ahb bus client");
-		rc = -EINVAL;
-		goto error;
-	}
-
-	bus_client->dyn_vote = of_property_read_bool(dev_node,
-		"qcom,msm-bus-vector-dyn-vote");
-
-	if (bus_client->dyn_vote && (pdata->num_usecases != 2)) {
-		CAM_ERR(CAM_CPAS, "Excess or less vectors %d",
-			pdata->num_usecases);
-		rc = -EINVAL;
-		goto fail_unregister_client;
-	}
-
-	msm_bus_scale_client_update_request(client_id, 0);
-
-	bus_client->src = pdata->usecase[0].vectors[0].src;
-	bus_client->dst = pdata->usecase[0].vectors[0].dst;
-	bus_client->pdata = pdata;
-	bus_client->client_id = client_id;
-	bus_client->num_usecases = pdata->num_usecases;
-	bus_client->num_paths = pdata->usecase[0].num_paths;
 	bus_client->curr_vote_level = 0;
 	bus_client->valid = true;
-	bus_client->name = pdata->name;
 	mutex_init(&bus_client->lock);
 
-	CAM_DBG(CAM_CPAS, "Bus Client=[%d][%s] : src=%d, dst=%d",
-		bus_client->client_id, bus_client->name,
-		bus_client->src, bus_client->dst);
-
-	return 0;
-fail_unregister_client:
-	msm_bus_scale_unregister_client(bus_client->client_id);
-error:
 	return rc;
 
 }
@@ -224,12 +308,8 @@ static int cam_cpas_util_unregister_bus_client(
 	if (!bus_client->valid)
 		return -EINVAL;
 
-	if (bus_client->dyn_vote)
-		cam_cpas_util_vote_bus_client_bw(bus_client, 0, 0, false);
-	else
-		cam_cpas_util_vote_bus_client_level(bus_client, 0);
-
-	msm_bus_scale_unregister_client(bus_client->client_id);
+	cam_soc_bus_client_unregister(&bus_client->soc_bus_client);
+	bus_client->curr_vote_level = 0;
 	bus_client->valid = false;
 
 	mutex_destroy(&bus_client->lock);
@@ -670,12 +750,6 @@ static int cam_cpas_util_apply_client_axi_vote(
 	axi_port->consolidated_axi_vote.compressed_bw = mnoc_bw;
 	axi_port->consolidated_axi_vote.uncompressed_bw = camnoc_bw;
 
-	CAM_DBG(CAM_CPAS,
-		"axi[(%d, %d),(%d, %d)] : camnoc_bw[%llu], mnoc_bw[ab: %llu, ib: %llu]",
-		axi_port->mnoc_bus.src, axi_port->mnoc_bus.dst,
-		axi_port->camnoc_bus.src, axi_port->camnoc_bus.dst,
-		camnoc_bw, mnoc_bw_ab, mnoc_bw);
-
 	if (axi_port->ib_bw_voting_needed)
 		rc = cam_cpas_util_vote_bus_client_bw(&axi_port->mnoc_bus,
 			mnoc_bw_ab, mnoc_bw, false);
@@ -840,10 +914,6 @@ static int cam_cpas_util_apply_client_ahb_vote(struct cam_hw_info *cpas_hw,
 	mutex_lock(&ahb_bus_client->lock);
 	cpas_client->ahb_level = required_level;
 
-	CAM_DBG(CAM_CPAS, "Client=[%d][%s] required level[%d], curr_level[%d]",
-		ahb_bus_client->client_id, ahb_bus_client->name,
-		required_level, ahb_bus_client->curr_vote_level);
-
 	if (required_level == ahb_bus_client->curr_vote_level)
 		goto unlock_bus_client;
 
@@ -972,8 +1042,7 @@ static int cam_cpas_hw_start(void *hw_priv, void *start_args,
 	if (!ahb_vote || !axi_vote)
 		return -EINVAL;
 
-	if ((ahb_vote->vote.level == 0) || ((axi_vote->compressed_bw == 0) &&
-		(axi_vote->uncompressed_bw == 0))) {
+	if (ahb_vote->vote.level == 0) {
 		CAM_ERR(CAM_CPAS, "Invalid vote ahb[%d], axi[%llu], [%llu]",
 			ahb_vote->vote.level, axi_vote->compressed_bw,
 			axi_vote->uncompressed_bw);
