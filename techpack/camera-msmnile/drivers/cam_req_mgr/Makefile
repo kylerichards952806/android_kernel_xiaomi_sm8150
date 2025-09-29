@@ -2,6 +2,7 @@ ccflags-y += -I$(srctree)/techpack/camera-msmnile/drivers/cam_core/
 ccflags-y += -I$(srctree)/techpack/camera-msmnile/drivers/cam_smmu/
 ccflags-y += -I$(srctree)/techpack/camera-msmnile/drivers/cam_utils
 ccflags-y += -I$(srctree)/techpack/camera-msmnile/drivers/cam_req_mgr
+ccflags-y += -I$(srctree)/
 
 obj-$(CONFIG_SPECTRA_CAMERA) += cam_req_mgr_core.o\
 				cam_req_mgr_dev.o \
