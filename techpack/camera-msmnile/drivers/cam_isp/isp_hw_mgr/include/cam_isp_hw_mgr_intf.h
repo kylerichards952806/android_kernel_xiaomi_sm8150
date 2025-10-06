@@ -16,7 +16,7 @@
 #include <linux/of.h>
 #include <linux/time.h>
 #include <linux/list.h>
-#include <uapi/media/cam_isp.h>
+#include <media/cam_isp.h>
 #include "cam_hw_mgr_intf.h"
 
 /*

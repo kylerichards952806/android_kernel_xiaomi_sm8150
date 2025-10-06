@@ -11,7 +11,7 @@
  */
 #include <linux/iopoll.h>
 #include <linux/slab.h>
-#include <uapi/media/cam_defs.h>
+#include <media/cam_defs.h>
 
 #include "cam_csid_ppi_core.h"
 #include "cam_csid_ppi_dev.h"

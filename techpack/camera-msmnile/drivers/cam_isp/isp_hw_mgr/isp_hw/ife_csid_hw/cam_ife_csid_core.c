@@ -12,8 +12,8 @@
 
 #include <linux/iopoll.h>
 #include <linux/slab.h>
-#include <uapi/media/cam_isp.h>
-#include <uapi/media/cam_defs.h>
+#include <media/cam_isp.h>
+#include <media/cam_defs.h>
 
 #include "cam_req_mgr_workq.h"
 #include "cam_isp_hw_mgr_intf.h"

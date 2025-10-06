@@ -13,8 +13,8 @@
 #ifndef CAM_ICP_HW_MGR_INTF_H
 #define CAM_ICP_HW_MGR_INTF_H
 
-#include <uapi/media/cam_icp.h>
-#include <uapi/media/cam_defs.h>
+#include <media/cam_icp.h>
+#include <media/cam_defs.h>
 #include <linux/of.h>
 #include "cam_cpas_api.h"
 

@@ -13,8 +13,8 @@
 #ifndef CAM_JPEG_HW_MGR_INTF_H
 #define CAM_JPEG_HW_MGR_INTF_H
 
-#include <uapi/media/cam_jpeg.h>
-#include <uapi/media/cam_defs.h>
+#include <media/cam_jpeg.h>
+#include <media/cam_defs.h>
 #include <linux/of.h>
 
 int cam_jpeg_hw_mgr_init(struct device_node *of_node,

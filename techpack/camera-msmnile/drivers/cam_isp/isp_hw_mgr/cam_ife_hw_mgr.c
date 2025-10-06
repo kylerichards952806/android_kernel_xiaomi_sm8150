@@ -15,7 +15,7 @@
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
 #include <linux/qcom_scm.h>
-#include <uapi/media/cam_isp.h>
+#include <media/cam_isp.h>
 #include "cam_smmu_api.h"
 #include "cam_req_mgr_workq.h"
 #include "cam_isp_hw_mgr_intf.h"

@@ -15,10 +15,10 @@
 
 #include <linux/completion.h>
 #include "cam_hw.h"
-#include <uapi/media/cam_isp.h>
+#include <media/cam_isp.h>
 #include "cam_soc_util.h"
 #include "cam_irq_controller.h"
-#include <uapi/media/cam_isp.h>
+#include <media/cam_isp.h>
 
 #define CAM_ISP_FPS_60                           60
 

@@ -10,8 +10,8 @@
  * GNU General Public License for more details.
  */
 
-#include <uapi/media/cam_defs.h>
-#include <uapi/media/cam_isp.h>
+#include <media/cam_defs.h>
+#include <media/cam_isp.h>
 #include "cam_mem_mgr.h"
 #include "cam_isp_hw.h"
 #include "cam_vfe_hw_intf.h"
