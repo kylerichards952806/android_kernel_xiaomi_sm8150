@@ -1,9 +1,11 @@
 #ifndef __UAPI_CAM_HYP_ITF_H__
 #define __UAPI_CAM_HYP_ITF_H__
 
+#include <linux/types.h>
+
 struct cam_hyp_intf_hyp_handle_type {
-	uint32_t fd;
-	uint32_t handle;
+	__u32 fd;
+	__u32 handle;
 };
 
 #define MSM_CAM_HYP_INTF_IOCTL_MAGIC '^'

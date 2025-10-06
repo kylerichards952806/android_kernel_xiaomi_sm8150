@@ -38,8 +38,8 @@
  * @status:   Status of the object
  */
 struct cam_sync_ev_header {
-	int32_t sync_obj;
-	int32_t status;
+	__s32 sync_obj;
+	__s32 status;
 };
 
 /**
@@ -50,7 +50,7 @@ struct cam_sync_ev_header {
  */
 struct cam_sync_info {
 	char name[64];
-	int32_t sync_obj;
+	__s32 sync_obj;
 };
 
 /**
@@ -60,8 +60,8 @@ struct cam_sync_info {
  * @sync_state: State of the sync object to which it should be signaled
  */
 struct cam_sync_signal {
-	int32_t sync_obj;
-	uint32_t sync_state;
+	__s32 sync_obj;
+	__u32 sync_state;
 };
 
 /**
@@ -73,8 +73,8 @@ struct cam_sync_signal {
  */
 struct cam_sync_merge {
 	__u64 sync_objs;
-	uint32_t num_objs;
-	int32_t merged;
+	__u32 num_objs;
+	__s32 merged;
 };
 
 /**
@@ -85,8 +85,8 @@ struct cam_sync_merge {
  * @payload:    Pointer to user payload
  */
 struct cam_sync_userpayload_info {
-	int32_t sync_obj;
-	uint32_t reserved;
+	__s32 sync_obj;
+	__u32 reserved;
 	__u64 payload[CAM_SYNC_USER_PAYLOAD_SIZE];
 };
 
@@ -98,9 +98,9 @@ struct cam_sync_userpayload_info {
  * @timeout_ms: Timeout in milliseconds
  */
 struct cam_sync_wait {
-	int32_t sync_obj;
-	uint32_t reserved;
-	uint64_t timeout_ms;
+	__s32 sync_obj;
+	__u32 reserved;
+	__u64 timeout_ms;
 };
 
 /**
@@ -143,8 +143,8 @@ struct cam_private_ioctl_arg {
  */
 struct cam_sync_create2 {
 	char name[64];
-	int32_t sync_obj;
-	uint32_t client_id;
+	__s32 sync_obj;
+	__u32 client_id;
 };
 
 #define CAM_SYNC_CREATE2                         10

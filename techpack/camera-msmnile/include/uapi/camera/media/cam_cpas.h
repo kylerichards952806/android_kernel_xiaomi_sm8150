@@ -50,8 +50,8 @@
  *
  */
 struct cam_cpas_query_cap {
-	uint32_t                 camera_family;
-	uint32_t                 reserved;
+	__u32                    camera_family;
+	__u32                    reserved;
 	struct cam_hw_version    camera_version;
 	struct cam_hw_version    cpas_version;
 };
@@ -70,15 +70,15 @@ struct cam_cpas_query_cap {
  * @ddr_ib_bw                DDR IB bw for this path
  */
 struct cam_axi_per_path_bw_vote {
-	uint32_t                      usage_data;
-	uint32_t                      transac_type;
-	uint32_t                      path_data_type;
-	uint32_t                      reserved;
-	uint64_t                      camnoc_bw;
-	uint64_t                      mnoc_ab_bw;
-	uint64_t                      mnoc_ib_bw;
-	uint64_t                      ddr_ab_bw;
-	uint64_t                      ddr_ib_bw;
+	__u32                         usage_data;
+	__u32                         transac_type;
+	__u32                         path_data_type;
+	__u32                         reserved;
+	__u64                         camnoc_bw;
+	__u64                         mnoc_ab_bw;
+	__u64                         mnoc_ib_bw;
+	__u64                         ddr_ab_bw;
+	__u64                         ddr_ib_bw;
 };
 
 #endif /* __UAPI_CAM_CPAS_H__ */

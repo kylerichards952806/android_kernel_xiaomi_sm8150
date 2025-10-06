@@ -22,9 +22,9 @@ enum CAM_LRME_IO_TYPE {
 
 
 struct cam_lrme_hw_version {
-	uint32_t gen;
-	uint32_t rev;
-	uint32_t step;
+	__u32 gen;
+	__u32 rev;
+	__u32 step;
 };
 
 struct cam_lrme_dev_cap {
@@ -47,14 +47,14 @@ struct cam_lrme_dev_cap {
 struct cam_lrme_query_cap_cmd {
 	struct cam_iommu_handle device_iommu;
 	struct cam_iommu_handle cdm_iommu;
-	uint32_t num_devices;
+	__u32 num_devices;
 	struct cam_lrme_dev_cap dev_caps[CAM_LRME_DEV_MAX];
 };
 
 struct cam_lrme_soc_info {
-	uint64_t clock_rate;
-	uint64_t bandwidth;
-	uint64_t reserved[4];
+	__u64 clock_rate;
+	__u64 bandwidth;
+	__u64 reserved[4];
 };
 
 struct cam_lrme_acquire_args {
