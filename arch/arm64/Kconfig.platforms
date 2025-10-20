@@ -409,4 +409,23 @@ config ARCH_SA2150P
 	  If you do not wish to build a kernel that runs on this chipset,
 	  say 'N' here.
 
+config MACH_XIAOMI
+	bool "Xiaomi device"
+	depends on ARCH_QCOM
+	help
+	  Support for Xiaomi products
+
+config MACH_XIAOMI_SM8150
+	bool "Xiaomi SM8150"
+	depends on ARCH_QCOM
+	select MACH_XIAOMI
+	help
+	  Support for Xiaomi SM8150 devices
+
+config MACH_XIAOMI_VAYU
+	bool "Xiaomi vayu board"
+	select MACH_XIAOMI_SM8150
+	help
+	  Support for POCO X3 Pro
+
 endmenu

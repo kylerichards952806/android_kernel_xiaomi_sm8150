@@ -4,6 +4,9 @@ vendor  := $(dtstree)/vendor
 ifneq "$(wildcard $(vendor)/Makefile)" ""
     ifeq ($(CONFIG_ARCH_SM8150),y)
         subdir-y += qcom
+    ifeq ($(CONFIG_MACH_XIAOMI),y)
+        subdir-y += xiaomi
+    endif
     else
 	subdir-y += vendor
     endif
@@ -37,5 +40,4 @@ subdir-y += synaptics
 subdir-y += ti
 subdir-y += xilinx
 subdir-y += zte
-
 endif
