@@ -63,6 +63,8 @@
 		mboxes = <&qmp_aop 0>;
 		mbox-names = "aop";
 		#cooling-cells = <2>;
+		interconnect-names = "icc-npu-cdspmem", "icc-cpu-imemcfg";
+		interconnects = <&compute_noc MASTER_NPU &compute_noc SLAVE_CDSP_MEM_NOC>, <&gem_noc MASTER_APPSS_PROC &config_noc SLAVE_IMEM_CFG>;
 		qcom,npubw-dev = <&npu_npu_ddr_bw>;
 		qcom,npu-cxlimit-enable;
 		qcom,npu-pwrlevels {

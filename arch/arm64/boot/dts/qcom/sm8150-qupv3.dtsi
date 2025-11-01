@@ -3,15 +3,14 @@
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
-#include <dt-bindings/msm/msm-bus-ids.h>
-
 &soc {
 	/* QUPv3 South Instances */
 	qupv3_0: qcom,qupv3_0_geni_se@8c0000 {
 		compatible = "qcom,qupv3-geni-se";
 		reg = <0x8c0000 0x6000>;
-		qcom,bus-mas-id = <MSM_BUS_MASTER_QUP_0>;
-		qcom,bus-slv-id = <MSM_BUS_SLAVE_EBI_CH0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-bus-ids =
+			<MASTER_QUP_0 SLAVE_EBI1>;
 		iommus = <&apps_smmu 0xc3 0x0>;
 		qcom,iommu-dma-addr-pool = <0x40000000 0xc0000000>;
 		qcom,iommu-dma = "fastmap";
@@ -372,8 +371,9 @@
 	qupv3_1: qcom,qupv3_1_geni_se@ac0000 {
 		compatible = "qcom,qupv3-geni-se";
 		reg = <0xac0000 0x6000>;
-		qcom,bus-mas-id = <MSM_BUS_MASTER_QUP_1>;
-		qcom,bus-slv-id = <MSM_BUS_SLAVE_EBI_CH0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-bus-ids =
+			<MASTER_QUP_1 SLAVE_EBI1>;
 		iommus = <&apps_smmu 0x603 0x0>;
 		qcom,iommu-dma-addr-pool = <0x40000000 0xc0000000>;
 		qcom,iommu-dma = "fastmap";
@@ -697,8 +697,9 @@
 	qupv3_2: qcom,qupv3_2_geni_se@cc0000 {
 		compatible = "qcom,qupv3-geni-se";
 		reg = <0xcc0000 0x6000>;
-		qcom,bus-mas-id = <MSM_BUS_MASTER_QUP_2>;
-		qcom,bus-slv-id = <MSM_BUS_SLAVE_EBI_CH0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-bus-ids =
+			<MASTER_QUP_2 SLAVE_EBI1>;
 		iommus = <&apps_smmu 0x7a3 0x0>;
 		qcom,iommu-dma-addr-pool = <0x40000000 0xc0000000>;
 		qcom,iommu-dma = "fastmap";
@@ -962,8 +963,9 @@
 	qupv3_3: qcom,qupv3_3_geni_se@26c0000 {
 		compatible = "qcom,qupv3-geni-se";
 		reg = <0x26c0000 0x6000>;
-		qcom,bus-mas-id = <MSM_BUS_MASTER_SENSORS_AHB>;
-		qcom,bus-slv-id = <MSM_BUS_SLAVE_EBI_CH0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-bus-ids =
+			<MASTER_SENSORS_AHB SLAVE_EBI1>;
 		qcom,iommu-s1-bypass;
 		qcom,subsys-name = "slpi";
 		clock-names = "corex", "core2x";

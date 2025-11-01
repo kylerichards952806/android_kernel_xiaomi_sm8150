@@ -13,6 +13,7 @@
 #include <dt-bindings/interconnect/qcom,osm-l3.h>
 #include <dt-bindings/interconnect/qcom,sm8150.h>
 #include <dt-bindings/clock/qcom,npucc-sm8150.h>
+#include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/clock/qcom,rpmh.h>
 #include <dt-bindings/sound/qcom,gpr.h>
 #include <dt-bindings/clock/qcom,aop-qmp.h>
@@ -20,7 +21,6 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/soc/qcom,rpmh-rsc.h>
 #include <dt-bindings/soc/qcom,dcc_v2.h>
-#include <dt-bindings/msm/msm-bus-ids.h>
 #include <dt-bindings/spmi/spmi.h>
 
 #define MHZ_TO_MBPS(mhz, w) ((mhz * 1000000 * w) / (1024 * 1024))
@@ -908,8 +908,8 @@
 	cpu_cpu_llcc_bw: qcom,cpu-cpu-llcc-bw {
 		compatible = "qcom,devbw";
 		governor = "performance";
-		qcom,src-dst-ports =
-			<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_LLCC>;
+		interconnects = <&gem_noc MASTER_APPSS_PROC
+				&gem_noc SLAVE_LLCC>;
 		qcom,active-only;
 		operating-points-v2 = <&llcc_bw_opp_table>;
 	};
@@ -943,8 +943,7 @@
 	cpu_llcc_ddr_bw: qcom,cpu-llcc-ddr-bw {
 		compatible = "qcom,devbw";
 		governor = "performance";
-		qcom,src-dst-ports =
-			<MSM_BUS_MASTER_LLCC MSM_BUS_SLAVE_EBI_CH0>;
+		interconnects = <&mc_virt MASTER_LLCC &mc_virt SLAVE_EBI1>;
 		qcom,active-only;
 		operating-points-v2 = <&ddr_bw_opp_table>;
 	};
@@ -978,8 +977,9 @@
 	npu_npu_ddr_bw: qcom,npu-npu-ddr-bw {
 		compatible = "qcom,devbw";
 		governor = "performance";
-		qcom,src-dst-ports = <MSM_BUS_MASTER_NPU MSM_BUS_SLAVE_EBI_CH0>;
+		interconnects = <&compute_noc MASTER_NPU &mc_virt SLAVE_EBI1>;
 		operating-points-v2 = <&suspendable_ddr_bw_opp_table>;
+		qcom,active-only;
 	};
 
 	npu_npu_ddr_bwmon: qcom,npu-npu-ddr-bwmon@9960300 {
@@ -1021,8 +1021,8 @@
 	cpu0_cpu_llcc_lat: qcom,cpu0-cpu-llcc-lat {
 		compatible = "qcom,devbw";
 		governor = "performance";
-		qcom,src-dst-ports =
-			<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_LLCC>;
+		interconnects = <&gem_noc MASTER_APPSS_PROC
+				&gem_noc SLAVE_LLCC>;
 		qcom,active-only;
 		operating-points-v2 = <&llcc_bw_opp_table>;
 	};
@@ -1030,8 +1030,8 @@
 	cpu4_cpu_llcc_lat: qcom,cpu4-cpu-llcc-lat {
 		compatible = "qcom,devbw";
 		governor = "performance";
-		qcom,src-dst-ports =
-			<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_LLCC>;
+		interconnects = <&gem_noc MASTER_APPSS_PROC
+				&gem_noc SLAVE_LLCC>;
 		qcom,active-only;
 		operating-points-v2 = <&llcc_bw_opp_table>;
 	};
@@ -1039,8 +1039,7 @@
 	cpu0_llcc_ddr_lat: qcom,cpu0-llcc-ddr-lat {
 		compatible = "qcom,devbw";
 		governor = "performance";
-		qcom,src-dst-ports =
-			<MSM_BUS_MASTER_LLCC MSM_BUS_SLAVE_EBI_CH0>;
+		interconnects = <&mc_virt MASTER_LLCC &mc_virt SLAVE_EBI1>;
 		qcom,active-only;
 		operating-points-v2 = <&ddr_bw_opp_table>;
 	};
@@ -1048,8 +1047,7 @@
 	cpu4_llcc_ddr_lat: qcom,cpu4-llcc-ddr-lat {
 		compatible = "qcom,devbw";
 		governor = "performance";
-		qcom,src-dst-ports =
-			<MSM_BUS_MASTER_LLCC MSM_BUS_SLAVE_EBI_CH0>;
+		interconnects = <&mc_virt MASTER_LLCC &mc_virt SLAVE_EBI1>;
 		qcom,active-only;
 		operating-points-v2 = <&ddr_bw_opp_table>;
 	};
@@ -1057,8 +1055,7 @@
 	cpu4_cpu_ddr_latfloor: qcom,cpu4-cpu-ddr-latfloor {
 		compatible = "qcom,devbw";
 		governor = "performance";
-		qcom,src-dst-ports =
-			<MSM_BUS_MASTER_LLCC MSM_BUS_SLAVE_EBI_CH0>;
+		interconnects = <&mc_virt MASTER_LLCC &mc_virt SLAVE_EBI1>;
 		qcom,active-only;
 		operating-points-v2 = <&ddr_bw_opp_table>;
 	};
@@ -1820,12 +1817,8 @@
 		qcom,signal-aop;
 		qcom,complete-ramdump;
 
-		qcom,msm-bus,name = "pil-cdsp";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-			<154 10070 0 0>,
-			<154 10070 0 1>;
+		interconnect-names = "pil-cdsp";
+		interconnects = <&compute_noc MASTER_NPU &compute_noc SLAVE_CDSP_MEM_NOC>;
 
 		/* Inputs from turing */
 		interrupts-extended = <&intc GIC_SPI 578 IRQ_TYPE_EDGE_RISING>,
@@ -1868,12 +1861,9 @@
 		qcom,ahb-freq = <200000000>;
 
 		qcom,pas-id = <9>;
-		qcom,msm-bus,name = "pil-venus";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-			<63 512 0 0>,
-			<63 512 0 304000>;
+		interconnect-names = "pil-venus";
+		interconnects = <&mmss_noc MASTER_VIDEO_P0
+				&mc_virt SLAVE_EBI1>;
 		qcom,proxy-timeout-ms = <100>;
 		qcom,firmware-name = "venus";
 		memory-region = <&pil_video_mem>;
@@ -2226,10 +2216,14 @@
 			<0 0>,
 			<0 0>;
 
-		qcom,msm-bus,name = "ufshc_mem";
-		qcom,msm-bus,num-cases = <26>;
-		qcom,msm-bus,num-paths = <2>;
-		qcom,msm-bus,vectors-KBps =
+		interconnects = <&aggre1_noc MASTER_UFS_MEM &mc_virt SLAVE_EBI1>,
+			<&gem_noc MASTER_APPSS_PROC &config_noc SLAVE_UFS_MEM_CFG>;
+		interconnect-names = "ufs-ddr", "cpu-ufs";
+
+		qcom,ufs-bus-bw,name = "ufshc_mem";
+		qcom,ufs-bus-bw,num-cases = <26>;
+		qcom,ufs-bus-bw,num-paths = <2>;
+		qcom,ufs-bus-bw,vectors-KBps =
 		/*
 		 * During HS G3 UFS runs at nominal voltage corner, vote
 		 * higher bandwidth to push other buses in the data path
@@ -2240,38 +2234,38 @@
 		 * For max bandwidth, vote high enough to push the buses
 		 * to run in turbo voltage corner.
 		 */
-		<123 512 0 0>, <1 757 0 0>,          /* No vote */
-		<123 512 922 0>, <1 757 1000 0>,     /* PWM G1 */
-		<123 512 1844 0>, <1 757 1000 0>,    /* PWM G2 */
-		<123 512 3688 0>, <1 757 1000 0>,    /* PWM G3 */
-		<123 512 7376 0>, <1 757 1000 0>,    /* PWM G4 */
-		<123 512 1844 0>, <1 757 1000 0>,    /* PWM G1 L2 */
-		<123 512 3688 0>, <1 757 1000 0>,    /* PWM G2 L2 */
-		<123 512 7376 0>, <1 757 1000 0>,    /* PWM G3 L2 */
-		<123 512 14752 0>, <1 757 1000 0>,   /* PWM G4 L2 */
-		<123 512 127796 0>, <1 757 1000 0>,  /* HS G1 RA */
-		<123 512 255591 0>, <1 757 1000 0>,  /* HS G2 RA */
-		<123 512 2097152 0>, <1 757 102400 0>,  /* HS G3 RA */
-		<123 512 4194304 0>, <1 757 204800 0>,  /* HS G4 RA */
-		<123 512 255591 0>, <1 757 1000 0>,  /* HS G1 RA L2 */
-		<123 512 511181 0>, <1 757 1000 0>,  /* HS G2 RA L2 */
-		<123 512 4194304 0>, <1 757 204800 0>, /* HS G3 RA L2 */
-		<123 512 8388608 0>, <1 757 409600 0>, /* HS G4 RA L2 */
-		<123 512 149422 0>, <1 757 1000 0>,  /* HS G1 RB */
-		<123 512 298189 0>, <1 757 1000 0>,  /* HS G2 RB */
-		<123 512 2097152 0>, <1 757 102400 0>,  /* HS G3 RB */
-		<123 512 4194304 0>, <1 757 204800 0>,  /* HS G4 RB */
-		<123 512 298189 0>, <1 757 1000 0>,  /* HS G1 RB L2 */
-		<123 512 596378 0>, <1 757 1000 0>,  /* HS G2 RB L2 */
+		<0 0>, <0 0>,          /* No vote */
+		<922 0>, <1000 0>,     /* PWM G1 */
+		<1844 0>, <1000 0>,    /* PWM G2 */
+		<3688 0>, <1000 0>,    /* PWM G3 */
+		<7376 0>, <1000 0>,    /* PWM G4 */
+		<1844 0>, <1000 0>,    /* PWM G1 L2 */
+		<3688 0>, <1000 0>,    /* PWM G2 L2 */
+		<7376 0>, <1000 0>,    /* PWM G3 L2 */
+		<14752 0>, <1000 0>,   /* PWM G4 L2 */
+		<127796 0>, <1000 0>,  /* HS G1 RA */
+		<255591 0>, <1000 0>,  /* HS G2 RA */
+		<2097152 0>, <102400 0>,  /* HS G3 RA */
+		<4194304 0>, <204800 0>,  /* HS G4 RA */
+		<255591 0>, <1000 0>,  /* HS G1 RA L2 */
+		<511181 0>, <1000 0>,  /* HS G2 RA L2 */
+		<4194304 0>, <204800 0>, /* HS G3 RA L2 */
+		<8388608 0>, <409600 0>, /* HS G4 RA L2 */
+		<149422 0>, <1000 0>,  /* HS G1 RB */
+		<298189 0>, <1000 0>,  /* HS G2 RB */
+		<2097152 0>, <102400 0>,  /* HS G3 RB */
+		<4194304 0>, <204800 0>,  /* HS G4 RB */
+		<298189 0>, <1000 0>,  /* HS G1 RB L2 */
+		<596378 0>, <1000 0>,  /* HS G2 RB L2 */
 		/* As UFS working in HS G3 RB L2 mode, aggregated
 		 * bandwidth (AB) should take care of providing
 		 * optimum throughput requested. However, as tested,
 		 * in order to scale up CNOC clock, instantaneous
 		 * bindwidth (IB) needs to be given a proper value too.
 		 */
-		<123 512 4194304 0>, <1 757 204800 409600>, /* HS G3 RB L2 */
-		<123 512 8388608 0>, <1 757 409600 409600>, /* HS G4 RB L2 */
-		<123 512 7643136 0>, <1 757 307200 0>; /* Max. bandwidth */
+		<4194304 0>, <204800 409600>, /* HS G3 RB L2 */
+		<8388608 0>, <409600 409600>, /* HS G4 RB L2 */
+		<7643136 0>, <307200 0>; /* Max. bandwidth */
 
 		qcom,bus-vector-names = "MIN",
 		"PWM_G1_L1", "PWM_G2_L1", "PWM_G3_L1", "PWM_G4_L1",
@@ -2473,33 +2467,30 @@
 		qcom,bus-width = <4>;
 		qcom,large-address-bus;
 
+		interconnects = <&aggre2_noc MASTER_SDCC_2 &mc_virt SLAVE_EBI1>,
+			<&gem_noc MASTER_APPSS_PROC &config_noc SLAVE_SDCC_2>;
+		interconnect-names = "sdhc-ddr","cpu-sdhc";
+
 		qcom,msm-bus,name = "sdhc2";
 		qcom,msm-bus,num-cases = <8>;
 		qcom,msm-bus,num-paths = <2>;
 		qcom,msm-bus,vectors-KBps =
 			/* No vote */
-			<81 512 0 0>, <1 608 0 0>,
+			<0 0>, <0 0>,
 			/* 400 KB/s*/
-			<81 512 1046 1600>,
-			<1 608 1600 1600>,
+			<1046 1600>, <1600 1600>,
 			/* 20 MB/s */
-			<81 512 52286 80000>,
-			<1 608 80000 80000>,
+			<52286 80000>, <80000 80000>,
 			/* 25 MB/s */
-			<81 512 65360 100000>,
-			<1 608 100000 100000>,
+			<65360 100000>, <100000 100000>,
 			/* 50 MB/s */
-			<81 512 130718 200000>,
-			<1 608 133320 133320>,
+			<130718 200000>, <133320 133320>,
 			/* 100 MB/s */
-			<81 512 261438 200000>,
-			<1 608 150000 150000>,
+			<261438 200000>, <150000 150000>,
 			/* 200 MB/s */
-			<81 512 261438 400000>,
-			<1 608 300000 300000>,
+			<261438 400000>, <300000 300000>,
 			/* Max. bandwidth */
-			<81 512 1338562 4096000>,
-			<1 608 1338562 4096000>;
+			<1338562 4096000>, <1338562 4096000>;
 		qcom,bus-bw-vectors-bps = <0 400000 20000000 25000000 50000000
 			100750000 200000000 4294967295>;
 
@@ -2998,12 +2989,8 @@
 		reg = <0x793000 0x1000>;
 		qcom,msm-rng-iface-clk;
 		qcom,no-qrng-config;
-		qcom,msm-bus,name = "msm-rng-noc";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-			<1 618 0 0>,    /* No vote */
-			<1 618 0 300000>;  /* 75 MHz */
+		interconnect-names = "data_path";
+		interconnects = <&gem_noc MASTER_APPSS_PROC &config_noc SLAVE_PRNG>;
 		clocks = <&clock_gcc GCC_PRNG_AHB_CLK>;
 		clock-names = "iface_clk";
 	};
@@ -3019,12 +3006,8 @@
 		qcom,ce-device = <0>;
 		qcom,ce-hw-shared;
 		qcom,bam-ee = <0>;
-		qcom,msm-bus,name = "qcedev-noc";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-				<125 512 0 0>,
-				<125 512 393600 393600>;
+		interconnect-names = "data_path";
+		interconnects = <&aggre2_noc MASTER_CRYPTO &mc_virt SLAVE_EBI1>;
 		qcom,smmu-s1-enable;
 		qcom,no-clock-support;
 		iommus = <&apps_smmu 0x0506 0x0011>,
@@ -3064,12 +3047,8 @@
 		qcom,bam-ee = <0>;
 		qcom,ce-hw-shared;
 		qcom,clk-mgmt-sus-res;
-		qcom,msm-bus,name = "qcrypto-noc";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-			<125 512 0 0>,
-			<125 512 393600 393600>;
+		interconnect-names = "data_path";
+		interconnects = <&aggre2_noc MASTER_CRYPTO &mc_virt SLAVE_EBI1>;
 		qcom,use-sw-aes-cbc-ecb-ctr-algo;
 		qcom,use-sw-aes-xts-algo;
 		qcom,use-sw-aes-ccm-algo;
@@ -3597,39 +3576,32 @@
 		qcom,smmu-fast-map;
 		qcom,use-ipa-pm;
 		qcom,bandwidth-vote-for-ipa;
-		qcom,msm-bus,name = "ipa";
-		qcom,msm-bus,num-cases = <5>;
-		qcom,msm-bus,num-paths = <4>;
-		qcom,msm-bus,vectors-KBps =
+		qcom,interconnect,num-cases = <5>;
+		qcom,interconnect,num-paths = <3>;
+		interconnect-names = "ipa_to_ebi1", "ipa_to_imem", "appss_to_ipa";
+		interconnects = <&aggre2_noc MASTER_IPA &mc_virt SLAVE_EBI1>,
+				<&aggre2_noc MASTER_IPA &system_noc SLAVE_IMEM>,
+				<&gem_noc MASTER_APPSS_PROC &config_noc SLAVE_IPA_CFG>;
+
 		/* No vote */
-		<MSM_BUS_MASTER_IPA MSM_BUS_SLAVE_EBI_CH0 0 0>,
-		<MSM_BUS_MASTER_IPA MSM_BUS_SLAVE_OCIMEM 0 0>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_IPA_CFG 0 0>,
-		<MSM_BUS_MASTER_IPA_CORE MSM_BUS_SLAVE_IPA_CORE 0 0>,
+		qcom,no-vote =
+				<0 0 0 0 0 0>;
 
 		/* SVS2 */
-		<MSM_BUS_MASTER_IPA MSM_BUS_SLAVE_EBI_CH0 80000 600000>,
-		<MSM_BUS_MASTER_IPA MSM_BUS_SLAVE_OCIMEM 80000 350000>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_IPA_CFG 40000 40000>,
-		<MSM_BUS_MASTER_IPA_CORE MSM_BUS_SLAVE_IPA_CORE 0 125>,
+		qcom,svs2 =
+			<80000 600000 80000 350000 40000 40000>;
 
 		/* SVS */
-		<MSM_BUS_MASTER_IPA MSM_BUS_SLAVE_EBI_CH0 80000 640000>,
-		<MSM_BUS_MASTER_IPA MSM_BUS_SLAVE_OCIMEM 80000 640000>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_IPA_CFG 80000 80000>,
-		<MSM_BUS_MASTER_IPA_CORE MSM_BUS_SLAVE_IPA_CORE 0 250>,
+		qcom,svs =
+			< 80000 640000 80000 640000 80000 80000>;
 
 		/* NOMINAL */
-		<MSM_BUS_MASTER_IPA MSM_BUS_SLAVE_EBI_CH0 206000 960000>,
-		<MSM_BUS_MASTER_IPA MSM_BUS_SLAVE_OCIMEM 206000 960000>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_IPA_CFG 206000 160000>,
-		<MSM_BUS_MASTER_IPA_CORE MSM_BUS_SLAVE_IPA_CORE 0 500>,
+		qcom,nominal =
+			<206000 960000 206000 960000 206000 160000>;
 
 		/* TURBO */
-		<MSM_BUS_MASTER_IPA MSM_BUS_SLAVE_EBI_CH0 206000 3600000>,
-		<MSM_BUS_MASTER_IPA MSM_BUS_SLAVE_OCIMEM 206000 3600000>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_IPA_CFG 206000 300000>,
-		<MSM_BUS_MASTER_IPA_CORE MSM_BUS_SLAVE_IPA_CORE 0 600>;
+		qcom,turbo =
+			<206000 3600000 206000 3600000 206000 300000>;
 
 		qcom,bus-vector-names = "MIN", "SVS2", "SVS", "NOMINAL",
 		"TURBO";
@@ -3839,10 +3811,10 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&wil6210_refclk3_en_pin>;
 		qcom,wigig-en = <&tlmm 131 0>;
-		qcom,msm-bus,name = "wil6210";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
+		qcom,11ad-bus-bw,name = "wil6210";
+		qcom,11ad-bus-bw,num-cases = <2>;
+		qcom,11ad-bus-bw,num-paths = <1>;
+		qcom,11ad-bus-bw,vectors-KBps =
 			<100 512 0 0>,
 			<100 512 600000 800000>; /* ~4.6Gbps (MCS12) */
 		qcom,use-ext-supply;
@@ -3882,13 +3854,14 @@
 		clocks = <&clock_gcc GCC_TSIF_AHB_CLK>,
 			<&clock_gcc GCC_TSIF_REF_CLK>;
 
-		qcom,msm-bus,name = "tsif";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
+		interconnect-names = "tsif";
+		interconnects = <&aggre2_noc MASTER_TSIF
+				&mc_virt SLAVE_EBI1>;
+		/* No ICC support yet
 		qcom,msm-bus,vectors-KBps =
-				<82 512 0 0>, /* No vote */
-				<82 512 12288 24576>;
-				/* Max. bandwidth, 2xTSIF, each max of 96Mbps */
+					<82 512 0 0>, // No vote
+					<82 512 12288 24576>;
+		*/
 
 		pinctrl-names = "disabled",
 			"tsif0-mode1", "tsif0-mode2",
@@ -3980,17 +3953,15 @@
 	status = "ok";
 };
 
+
 &bps_gdsc {
 	clock-names = "ahb_clk";
 	clocks = <&clock_gcc GCC_CAMERA_AHB_CLK>;
 	parent-supply = <&VDD_MMCX_LEVEL>;
 	vdd_parent-supply = <&VDD_MMCX_LEVEL>;
-	qcom,msm-bus,name = "bps_gdsc_ahb";
-	qcom,msm-bus,num-cases = <2>;
-	qcom,msm-bus,num-paths = <1>;
-	qcom,msm-bus,vectors-KBps =
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_CAMERA_CFG 0 0>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_CAMERA_CFG 0 1>;
+	interconnect-names = "bps_gdsc_ahb";
+	interconnects = <&gem_noc MASTER_APPSS_PROC
+			&config_noc SLAVE_CAMERA_CFG>;
 	qcom,support-hw-trigger;
 	status = "ok";
 };
@@ -4000,12 +3971,9 @@
 	clocks = <&clock_gcc GCC_CAMERA_AHB_CLK>;
 	parent-supply = <&VDD_MMCX_LEVEL>;
 	vdd_parent-supply = <&VDD_MMCX_LEVEL>;
-	qcom,msm-bus,name = "ipe_0_gdsc_ahb";
-	qcom,msm-bus,num-cases = <2>;
-	qcom,msm-bus,num-paths = <1>;
-	qcom,msm-bus,vectors-KBps =
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_CAMERA_CFG 0 0>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_CAMERA_CFG 0 1>;
+	interconnect-names = "ipe_0_gdsc_ahb";
+	interconnects = <&gem_noc MASTER_APPSS_PROC
+			&config_noc SLAVE_CAMERA_CFG>;
 	qcom,support-hw-trigger;
 	status = "ok";
 };
@@ -4015,12 +3983,9 @@
 	clocks = <&clock_gcc GCC_CAMERA_AHB_CLK>;
 	parent-supply = <&VDD_MMCX_LEVEL>;
 	vdd_parent-supply = <&VDD_MMCX_LEVEL>;
-	qcom,msm-bus,name = "ipe_1_gdsc_ahb";
-	qcom,msm-bus,num-cases = <2>;
-	qcom,msm-bus,num-paths = <1>;
-	qcom,msm-bus,vectors-KBps =
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_CAMERA_CFG 0 0>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_CAMERA_CFG 0 1>;
+	interconnect-names = "ipe_1_gdsc_ahb";
+	interconnects = <&gem_noc MASTER_APPSS_PROC
+			&config_noc SLAVE_CAMERA_CFG>;
 	qcom,support-hw-trigger;
 	status = "ok";
 };
@@ -4030,12 +3995,9 @@
 	clocks = <&clock_gcc GCC_CAMERA_AHB_CLK>;
 	parent-supply = <&VDD_MMCX_LEVEL>;
 	vdd_parent-supply = <&VDD_MMCX_LEVEL>;
-	qcom,msm-bus,name = "ife_0_gdsc_ahb";
-	qcom,msm-bus,num-cases = <2>;
-	qcom,msm-bus,num-paths = <1>;
-	qcom,msm-bus,vectors-KBps =
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_CAMERA_CFG 0 0>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_CAMERA_CFG 0 1>;
+	interconnect-names = "ife_0_gdsc_ahb";
+	interconnects = <&gem_noc MASTER_APPSS_PROC
+			&config_noc SLAVE_CAMERA_CFG>;
 	status = "ok";
 };
 
@@ -4044,26 +4006,21 @@
 	clocks = <&clock_gcc GCC_CAMERA_AHB_CLK>;
 	parent-supply = <&VDD_MMCX_LEVEL>;
 	vdd_parent-supply = <&VDD_MMCX_LEVEL>;
-	qcom,msm-bus,name = "ife_1_gdsc_ahb";
-	qcom,msm-bus,num-cases = <2>;
-	qcom,msm-bus,num-paths = <1>;
-	qcom,msm-bus,vectors-KBps =
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_CAMERA_CFG 0 0>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_CAMERA_CFG 0 1>;
+	interconnect-names = "ife_1_gdsc_ahb";
+	interconnects = <&gem_noc MASTER_APPSS_PROC
+			&config_noc SLAVE_CAMERA_CFG>;
 	status = "ok";
 };
+
 
 &titan_top_gdsc {
 	clock-names = "ahb_clk";
 	clocks = <&clock_gcc GCC_CAMERA_AHB_CLK>;
 	parent-supply = <&VDD_MMCX_LEVEL>;
 	vdd_parent-supply = <&VDD_MMCX_LEVEL>;
-	qcom,msm-bus,name = "titan_top_gdsc_ahb";
-	qcom,msm-bus,num-cases = <2>;
-	qcom,msm-bus,num-paths = <1>;
-	qcom,msm-bus,vectors-KBps =
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_CAMERA_CFG 0 0>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_CAMERA_CFG 0 1>;
+	interconnect-names = "titan_top_gdsc_ahb";
+	interconnects = <&gem_noc MASTER_APPSS_PROC
+			&config_noc SLAVE_CAMERA_CFG>;
 	status = "ok";
 };
 
@@ -4072,12 +4029,9 @@
 	clocks = <&clock_gcc GCC_DISP_AHB_CLK>;
 	parent-supply = <&VDD_MMCX_LEVEL>;
 	vdd_parent-supply = <&VDD_MMCX_LEVEL>;
-	qcom,msm-bus,name = "mdss_core_gdsc_ahb";
-	qcom,msm-bus,num-cases = <2>;
-	qcom,msm-bus,num-paths = <1>;
-	qcom,msm-bus,vectors-KBps =
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_DISPLAY_CFG 0 0>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_DISPLAY_CFG 0 1>;
+	interconnect-names = "mdss_core_gdsc_ahb";
+	interconnects = <&gem_noc MASTER_APPSS_PROC
+			&config_noc SLAVE_DISPLAY_CFG>;
 	status = "ok";
 };
 
@@ -4098,41 +4052,34 @@
 	clocks = <&clock_gcc GCC_VIDEO_AHB_CLK>;
 	parent-supply = <&VDD_MMCX_LEVEL>;
 	vdd_parent-supply = <&VDD_MMCX_LEVEL>;
-	qcom,msm-bus,name = "mvsc_gdsc_ahb";
-	qcom,msm-bus,num-cases = <2>;
-	qcom,msm-bus,num-paths = <1>;
-	qcom,msm-bus,vectors-KBps =
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_VENUS_CFG 0 0>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_VENUS_CFG 0 1>;
+	interconnect-names = "mvsc_gdsc_ahb";
+	interconnects = <&gem_noc MASTER_APPSS_PROC
+			&config_noc SLAVE_VENUS_CFG>;
 	status = "ok";
 };
+
 
 &mvs0_gdsc {
 	clock-names = "ahb_clk";
 	clocks = <&clock_gcc GCC_VIDEO_AHB_CLK>;
 	parent-supply = <&VDD_MMCX_LEVEL>;
 	vdd_parent-supply = <&VDD_MMCX_LEVEL>;
-	qcom,msm-bus,name = "mvs0_gdsc_ahb";
-	qcom,msm-bus,num-cases = <2>;
-	qcom,msm-bus,num-paths = <1>;
-	qcom,msm-bus,vectors-KBps =
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_VENUS_CFG 0 0>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_VENUS_CFG 0 1>;
+	interconnect-names = "mvs0_gdsc_ahb";
+	interconnects = <&gem_noc MASTER_APPSS_PROC
+			&config_noc SLAVE_VENUS_CFG>;
 	qcom,support-hw-trigger;
 	status = "ok";
 };
+
 
 &mvs1_gdsc {
 	clock-names = "ahb_clk";
 	clocks = <&clock_gcc GCC_VIDEO_AHB_CLK>;
 	parent-supply = <&VDD_MMCX_LEVEL>;
 	vdd_parent-supply = <&VDD_MMCX_LEVEL>;
-	qcom,msm-bus,name = "mvs1_gdsc_ahb";
-	qcom,msm-bus,num-cases = <2>;
-	qcom,msm-bus,num-paths = <1>;
-	qcom,msm-bus,vectors-KBps =
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_VENUS_CFG 0 0>,
-		<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_VENUS_CFG 0 1>;
+	interconnect-names = "mvs1_gdsc_ahb";
+	interconnects = <&gem_noc MASTER_APPSS_PROC
+			&config_noc SLAVE_VENUS_CFG>;
 	qcom,support-hw-trigger;
 	status = "ok";
 };
@@ -4146,7 +4093,6 @@
 #include "sm8150-slpi-pinctrl.dtsi"
 #include "sm8150-regulator.dtsi"
 #include "sm8150-ion.dtsi"
-#include "sm8150-bus.dtsi"
 #include "sm8150-pcie.dtsi"
 #include "sm8150-smp2p.dtsi"
 #include "msm-arm-smmu-sm8150.dtsi"

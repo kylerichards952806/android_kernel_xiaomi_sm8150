@@ -3,13 +3,9 @@
  * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  */
 
-&soc {
-	msm_bus: qcom,kgsl-busmon {
-		label = "kgsl-busmon";
-		compatible = "qcom,kgsl-busmon";
-		operating-points-v2 = <&gpu_opp_table_v2>;
-	};
+#define MHZ_TO_KBPS(mhz, w) ((mhz * 1000000 * w) / (1024))
 
+&soc {
 	gpu_opp_table_v2: gpu_opp_table_v2 {
 		compatible = "operating-points-v2";
 
@@ -50,28 +46,19 @@
 	/* Updated chip ID */
 	qcom,chipid = <0x06040001>;
 
-	/* Updated Bus Scale Settings */
-	qcom,msm-bus,num-cases = <12>;
-
-	/*
-	 * Value for vote is: (DDR freq) * 4 - 5
-	 * The 5 value is to ensure that there is no rounding errors
-	 * where the total request doesn't divide evenly by the BCM
-	 * DDR bandwidth unit (note, 5 is greater than this unit).
-	 */
-	qcom,msm-bus,vectors-KBps =
-	<26 512 0 0>,          // 0 bus=0
-	<26 512 0 795000>,     // 1 bus=200
-	<26 512 0 1195000>,    // 2 bus=300
-	<26 512 0 1799000>,    // 3 bus=451
-	<26 512 0 2183000>,    // 4 bus=547
-	<26 512 0 2719000>,    // 5 bus=681
-	<26 512 0 3067000>,    // 6 bus=768
-	<26 512 0 4063000>,    // 7 bus=1017
-	<26 512 0 5407000>,    // 8 bus=1353
-	<26 512 0 6215000>,    // 9 bus=1555
-	<26 512 0 7211000>,    // 10 bus=1804
-	<26 512 0 8363000>;    // 11 bus=2092
+	qcom,bus-table-ddr =
+		<MHZ_TO_KBPS(0, 4)>,    /* index=0  */
+		<MHZ_TO_KBPS(200, 4)>,  /* index=1  */
+		<MHZ_TO_KBPS(300, 4)>,  /* index=2  */
+		<MHZ_TO_KBPS(451, 4)>,  /* index=3  */
+		<MHZ_TO_KBPS(547, 4)>, /* index=4  */
+		<MHZ_TO_KBPS(681, 4)>, /* index=5  */
+		<MHZ_TO_KBPS(768, 4)>, /* index=6  */
+		<MHZ_TO_KBPS(1017, 4)>, /* index=7  */
+		<MHZ_TO_KBPS(1353, 4)>, /* index=8  */
+		<MHZ_TO_KBPS(1555, 4)>, /* index=9  */
+		<MHZ_TO_KBPS(1804, 4)>, /* index=10  */
+		<MHZ_TO_KBPS(2092, 4)>; /* index=11  */
 
 	/delete-property/qcom,initial-pwrlevel;
 

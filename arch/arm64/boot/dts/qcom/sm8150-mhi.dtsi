@@ -582,12 +582,9 @@
 
 		/* controller specific configuration */
 		qcom,smmu-cfg = <0x3>;
-		qcom,msm-bus,name = "mhi";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-			<45 512 0 0>,
-			<45 512 1200000000 650000000>;
+
+		interconnects = <&aggre2_noc MASTER_PCIE_0 &mc_virt SLAVE_EBI1>;
+		interconnect-names = "pcie_to_ddr";
 
 		/* mhi bus specific settings */
 		mhi,max-channels = <111>;

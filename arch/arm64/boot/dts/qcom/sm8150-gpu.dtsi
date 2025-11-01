@@ -3,24 +3,13 @@
  * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  */
 
+#define MHZ_TO_KBPS(mhz, w) ((mhz * 1000000 * w) / (1024))
+
 &soc {
 	pil_gpu: qcom,kgsl-hyp {
 		compatible = "qcom,pil-tz-generic";
 		qcom,pas-id = <13>;
 		qcom,firmware-name = "a640_zap";
-	};
-
-	msm_bus: qcom,kgsl-busmon{
-		label = "kgsl-busmon";
-		compatible = "qcom,kgsl-busmon";
-		operating-points-v2 = <&gpu_opp_table>;
-	};
-
-	gpubw: qcom,gpubw {
-		compatible = "qcom,devbw";
-		governor = "bw_vbif";
-		qcom,src-dst-ports = <26 512>;
-		operating-points-v2 = <&suspendable_ddr_bw_opp_table>;
 	};
 
 	gpu_opp_table: gpu-opp-table {
@@ -107,28 +96,28 @@
 
 		qcom,isense-clk-on-level = <1>;
 
-		/* Bus Scale Settings */
-		qcom,gpubw-dev = <&gpubw>;
-		qcom,bus-control;
-		qcom,msm-bus,name = "grp3d";
-		qcom,bus-width = <32>;
-		qcom,msm-bus,num-cases = <13>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-				<26 512 0 0>,
+		interconnects = <&gem_noc MASTER_GFX3D &mc_virt SLAVE_EBI1>;
+		interconnect-names = "gpu_icc_path";
 
-				<26 512 0 400000>,      // 1 bus=100
-				<26 512 0 600000>,     // 2 bus=150
-				<26 512 0 800000>,     // 3 bus=200
-				<26 512 0 1200000>,     // 4 bus=300
-				<26 512 0 1648000>,     // 5 bus=412
-				<26 512 0 2188000>,     // 6 bus=547
-				<26 512 0 2724000>,     // 7 bus=681
-				<26 512 0 3072000>,     // 8 bus=768
-				<26 512 0 4068000>,     // 9 bus=1017
-				<26 512 0 5184000>,    // 10 bus=1296
-				<26 512 0 6220000>,    // 11 bus=1555
-				<26 512 0 7216000>;    // 12 bus=1804
+		qcom,bus-table-ddr =
+			<MHZ_TO_KBPS(0, 4)>,    /* index=0  */
+			<MHZ_TO_KBPS(100, 4)>,  /* index=1  */
+			<MHZ_TO_KBPS(150, 4)>,  /* index=2  */
+			<MHZ_TO_KBPS(200, 4)>,  /* index=3  */
+			<MHZ_TO_KBPS(300, 4)>,  /* index=4  */
+			<MHZ_TO_KBPS(412, 4)>,  /* index=5  */
+			<MHZ_TO_KBPS(547, 4)>, /* index=6  */
+			<MHZ_TO_KBPS(681, 4)>, /* index=7  */
+			<MHZ_TO_KBPS(768, 4)>, /* index=8  */
+			<MHZ_TO_KBPS(1017, 4)>, /* index=9  */
+			<MHZ_TO_KBPS(1296, 4)>, /* index=10  */
+			<MHZ_TO_KBPS(1555, 4)>, /* index=11  */
+			<MHZ_TO_KBPS(1804, 4)>; /* index=12  */
+
+		/* REVISIT: Check On if 9999999 */
+		qcom,bus-table-cnoc =
+			<0>,   /* Off */
+			<100>; /* On */
 
 		/* GDSC regulator names */
 		regulator-names = "vddcx", "vdd";
@@ -264,16 +253,6 @@
 			};
 		};
 
-		qcom,cpu-to-ahb-path {
-			qcom,msm-bus,name = "ahbpath";
-			qcom,msm-bus,num-cases = <3>;
-			qcom,msm-bus,num-paths = <1>;
-			qcom,msm-bus,vectors-KBps =
-				<1 598 0 0>,            // off
-				<1 598 0 100>,          // min freq
-				<1 598 0 9999999>;      // max freq
-		};
-
 	};
 
 	kgsl_msm_iommu: qcom,kgsl-iommu@02CA0000 {
@@ -322,13 +301,6 @@
 
 		interrupts = <GIC_SPI 304 IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI 305 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "kgsl_hfi_irq", "kgsl_gmu_irq";
-
-		qcom,msm-bus,name = "cnoc";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-			<26 10036 0 0>,		// CNOC off
-			<26 10036 0 100>;	// CNOC on
 
 		regulator-names = "vddcx", "vdd";
 		vddcx-supply = <&gpu_cx_gdsc>;

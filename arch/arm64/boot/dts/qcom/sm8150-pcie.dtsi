@@ -197,12 +197,8 @@
 			<0xe00 &apps_smmu 0x1d8e 0x1>,
 			<0xf00 &apps_smmu 0x1d8f 0x1>;
 
-		qcom,msm-bus,name = "pcie0";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-				<45 512 0 0>,
-				<45 512 500 800>;
+		interconnect-names = "icc_path";
+		interconnects = <&aggre2_noc MASTER_PCIE_0 &mc_virt SLAVE_EBI1>;
 
 		clocks = <&clock_gcc GCC_PCIE_0_PIPE_CLK>,
 			<&clock_rpmh RPMH_CXO_CLK>,
@@ -520,12 +516,8 @@
 			<0xe00 &apps_smmu 0x1e0e 0x1>,
 			<0xf00 &apps_smmu 0x1e0f 0x1>;
 
-		qcom,msm-bus,name = "pcie1";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-				<100 512 0 0>,
-				<100 512 500 800>;
+		interconnect-names = "icc_path";
+		interconnects = <&aggre2_noc MASTER_PCIE_1 &mc_virt SLAVE_EBI1>;
 
 		clocks = <&clock_gcc GCC_PCIE_1_PIPE_CLK>,
 			<&clock_rpmh RPMH_CXO_CLK>,
@@ -671,12 +663,9 @@
 		reset-names = "pcie_core_reset",
 				"pcie_phy_reset";
 
-		qcom,msm-bus,name = "pcie-ep";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-				<100 512 0 0>,
-				<100 512 500 800>;
+		/* REVISIT: check if interconnects is correct */
+		interconnect-names = "icc_path";
+		interconnects = <&aggre2_noc MASTER_PCIE_0 &mc_virt SLAVE_EBI1>;
 
 		qcom,pcie-link-speed = <3>;
 		qcom,pcie-phy-ver = <6>;

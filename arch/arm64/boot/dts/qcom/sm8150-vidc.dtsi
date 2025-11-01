@@ -4,7 +4,6 @@
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
-#include <dt-bindings/msm/msm-bus-ids.h>
 #include <dt-bindings/clock/qcom,videocc-sm8150.h>
 
 &soc {
@@ -47,42 +46,22 @@
 		qcom,allowed-clock-rates = <225000000 300000000
 			365000000 432000000 480000000>;
 
-		/* Buses */
-		bus_cnoc {
-			compatible = "qcom,msm-vidc,bus";
-			label = "cnoc";
-			qcom,bus-master = <MSM_BUS_MASTER_AMPSS_M0>;
-			qcom,bus-slave = <MSM_BUS_SLAVE_VENUS_CFG>;
-			qcom,mode = "performance";
-			qcom,bus-range-kbps = <1000 1000>;
-		};
+		/* Bus Interconnects */
+		interconnect-names = "venus-cnoc", "venus-ddr", "venus-arm9-ddr", "venus-llcc";
+		interconnects = <&gem_noc MASTER_APPSS_PROC
+					&config_noc SLAVE_VENUS_CFG>,
+				<&mc_virt MASTER_LLCC
+					&mc_virt SLAVE_EBI1>,
+				<&mmss_noc MASTER_VIDEO_P0
+					&mc_virt SLAVE_EBI1>,
+				<&mmss_noc MASTER_VIDEO_P0
+					&gem_noc SLAVE_LLCC>;
 
-		venus_bus_ddr {
-			compatible = "qcom,msm-vidc,bus";
-			label = "venus-ddr";
-			qcom,bus-master = <MSM_BUS_MASTER_LLCC>;
-			qcom,bus-slave = <MSM_BUS_SLAVE_EBI_CH0>;
-			qcom,mode = "venus-ddr";
-			qcom,bus-range-kbps = <1000 6533000>;
-		};
-
-		arm9_bus_ddr {
-			compatible = "qcom,msm-vidc,bus";
-			label = "venus-arm9-ddr";
-			qcom,bus-master = <MSM_BUS_MASTER_VIDEO_P0>;
-			qcom,bus-slave = <MSM_BUS_SLAVE_EBI_CH0>;
-			qcom,mode = "performance";
-			qcom,bus-range-kbps = <1000 1000>;
-		};
-
-		venus_bus_llcc {
-			compatible = "qcom,msm-vidc,bus";
-			label = "venus-llcc";
-			qcom,bus-master = <MSM_BUS_MASTER_VIDEO_P0>;
-			qcom,bus-slave = <MSM_BUS_SLAVE_LLCC>;
-			qcom,mode = "venus-llcc";
-			qcom,bus-range-kbps = <1000 6533000>;
-		};
+		/* Bus BW range (low, high) for each bus */
+		qcom,bus-range-kbps = <1000 1000
+					1000 6533000
+					1000 1000
+					1000 6533000>;
 
 		/* MMUs */
 		non_secure_cb {
