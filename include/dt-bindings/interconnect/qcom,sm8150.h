@@ -6,6 +6,7 @@
 #ifndef __DT_BINDINGS_INTERCONNECT_QCOM_SM8150_H
 #define __DT_BINDINGS_INTERCONNECT_QCOM_SM8150_H
 
+/* MASTER_APPSS_PROC is also MASTER_AMPSS_M0 */
 #define MASTER_APPSS_PROC				0
 #define MASTER_GPU_TCU				1
 #define MASTER_SYS_TCU				2
@@ -66,6 +67,7 @@
 #define MASTER_USB3_0				57
 #define MASTER_USB3_1				58
 #define MASTER_SENSORS_AHB			59
+/* SLAVE_EBI1 is also SLAVE_EBI_CH0 */
 #define SLAVE_EBI1				512
 /* 513 was previously assigned to SLAVE_IPA_CORE, now represented as RPMh clock */
 #define SLAVE_A1NOC_CFG				514
