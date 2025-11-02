@@ -53,8 +53,8 @@
 		pci-domain1 = &pcie1; /* PCIe1 domain */
 		mhi0 = &mhi_0;
 		mhi1 = &mhi_1;
-		mhi_netdev0 = &mhi_netdev_0;
-		mhi_netdev2 = &mhi_netdev_2;
+		mhi-netdev0 = &mhi_netdev_0;
+		mhi-netdev2 = &mhi_netdev_2;
 		serial0 = &qupv3_se12_2uart;
 		hsuart0 = &qupv3_se13_4uart;
 		hsuart1 = &qupv3_se4_2uart;
