@@ -25,6 +25,9 @@
 
 #define MHZ_TO_MBPS(mhz, w) ((mhz * 1000000 * w) / (1024 * 1024))
 #define BW_OPP_ENTRY(mhz, w) opp-mhz {opp-hz = /bits/ 64 <MHZ_TO_MBPS(mhz, w)>;}
+#define BW_OPP_ENTRY_DDR(mhz, w, ddrtype) opp-mhz {\
+				opp-hz = /bits/ 64 <MHZ_TO_MBPS(mhz, w)>;\
+				opp-supported-hw = <ddrtype>;}
 
 / {
 	model = "Qualcomm Technologies, Inc. SM8150";
@@ -904,17 +907,32 @@
 
 	llcc_bw_opp_table: llcc-bw-opp-table {
 		compatible = "operating-points-v2";
-		BW_OPP_ENTRY( 150, 16); /*  2288 MB/s */
-		BW_OPP_ENTRY( 200, 16); /*  3051 MB/s */
-		BW_OPP_ENTRY( 403, 16); /*  6149 MB/s */
-		BW_OPP_ENTRY( 533, 16); /*  8132 MB/s */
-		BW_OPP_ENTRY( 666, 16); /* 10162 MB/s */
-		BW_OPP_ENTRY( 777, 16); /* 11856 MB/s */
+		BW_OPP_ENTRY(150, 16); /*  2288 MB/s */
+		BW_OPP_ENTRY(200, 16); /*  3051 MB/s */
+		BW_OPP_ENTRY(403, 16); /*  6149 MB/s */
+		BW_OPP_ENTRY(533, 16); /*  8132 MB/s */
+		BW_OPP_ENTRY(666, 16); /* 10162 MB/s */
+		BW_OPP_ENTRY(777, 16); /* 11856 MB/s */
+	};
+
+	ddr_bw_opp_table: ddr-bw-opp-table {
+		compatible = "operating-points-v2";
+		BW_OPP_ENTRY_DDR( 200, 4, 0x80); /*  762 MB/s */
+		BW_OPP_ENTRY_DDR( 300, 4, 0x80); /* 1144 MB/s */
+		BW_OPP_ENTRY_DDR( 451, 4, 0x80); /* 1720 MB/s */
+		BW_OPP_ENTRY_DDR( 547, 4, 0x80); /* 2086 MB/s */
+		BW_OPP_ENTRY_DDR( 681, 4, 0x80); /* 2597 MB/s */
+		BW_OPP_ENTRY_DDR( 768, 4, 0x80); /* 2929 MB/s */
+		BW_OPP_ENTRY_DDR(1017, 4, 0x80); /* 3879 MB/s */
+		BW_OPP_ENTRY_DDR(1296, 4, 0x80); /* 4943 MB/s */
+		BW_OPP_ENTRY_DDR(1555, 4, 0x80); /* 5931 MB/s */
+		BW_OPP_ENTRY_DDR(1804, 4, 0x80); /* 6881 MB/s */
+		BW_OPP_ENTRY_DDR(2092, 4, 0x80); /* 7980 MB/s */
 	};
 
 	cpu_cpu_llcc_bw: qcom,cpu-cpu-llcc-bw {
-		compatible = "qcom,devbw";
-		governor = "performance";
+		compatible = "qcom,devfreq-icc";
+		governor = "bw_hwmon";
 		interconnects = <&gem_noc MASTER_APPSS_PROC
 				&gem_noc SLAVE_LLCC>;
 		qcom,active-only;
@@ -932,24 +950,9 @@
 		qcom,count-unit = <0x10000>;
 	};
 
-	ddr_bw_opp_table: ddr-bw-opp-table {
-		compatible = "operating-points-v2";
-		BW_OPP_ENTRY( 200, 4); /*  762 MB/s */
-		BW_OPP_ENTRY( 300, 4); /* 1144 MB/s */
-		BW_OPP_ENTRY( 451, 4); /* 1720 MB/s */
-		BW_OPP_ENTRY( 547, 4); /* 2086 MB/s */
-		BW_OPP_ENTRY( 681, 4); /* 2597 MB/s */
-		BW_OPP_ENTRY( 768, 4); /* 2929 MB/s */
-		BW_OPP_ENTRY(1017, 4); /* 3879 MB/s */
-		BW_OPP_ENTRY(1296, 4); /* 4943 MB/s */
-		BW_OPP_ENTRY(1555, 4); /* 5931 MB/s */
-		BW_OPP_ENTRY(1804, 4); /* 6881 MB/s */
-		BW_OPP_ENTRY(2092, 4); /* 7980 MB/s */
-	};
-
 	cpu_llcc_ddr_bw: qcom,cpu-llcc-ddr-bw {
-		compatible = "qcom,devbw";
-		governor = "performance";
+		compatible = "qcom,devfreq-icc-ddr";
+		governor = "bw_hwmon";
 		interconnects = <&mc_virt MASTER_LLCC &mc_virt SLAVE_EBI1>;
 		qcom,active-only;
 		operating-points-v2 = <&ddr_bw_opp_table>;
@@ -965,78 +968,31 @@
 		qcom,count-unit = <0x10000>;
 	};
 
-	suspendable_ddr_bw_opp_table: suspendable-ddr-bw-opp-table {
-		compatible = "operating-points-v2";
-		BW_OPP_ENTRY(   0, 4); /*    0 MB/s */
-		BW_OPP_ENTRY( 200, 4); /*  762 MB/s */
-		BW_OPP_ENTRY( 300, 4); /* 1144 MB/s */
-		BW_OPP_ENTRY( 451, 4); /* 1720 MB/s */
-		BW_OPP_ENTRY( 547, 4); /* 2086 MB/s */
-		BW_OPP_ENTRY( 681, 4); /* 2597 MB/s */
-		BW_OPP_ENTRY( 768, 4); /* 2929 MB/s */
-		BW_OPP_ENTRY(1017, 4); /* 3879 MB/s */
-		BW_OPP_ENTRY(1296, 4); /* 4943 MB/s */
-		BW_OPP_ENTRY(1555, 4); /* 5931 MB/s */
-		BW_OPP_ENTRY(1804, 4); /* 6881 MB/s */
-		BW_OPP_ENTRY(2092, 4); /* 7980 MB/s */
+	cpu0_cpu_l3_lat: qcom,cpu0-cpu-l3-lat {
+		compatible = "qcom,devfreq-icc-l3";
+		reg = <0x18321110 0x500>;
+		reg-names = "ftbl-base";
+		qcom,ftbl-row-size = <0x20>;
+		governor = "mem_latency";
+		interconnects = <&osm_l3 MASTER_OSM_L3_APPS
+				&osm_l3 SLAVE_OSM_L3_CLUSTER0>;
 	};
 
-	npu_npu_ddr_bw: qcom,npu-npu-ddr-bw {
-		compatible = "qcom,devbw";
-		governor = "performance";
-		interconnects = <&compute_noc MASTER_NPU &mc_virt SLAVE_EBI1>;
-		operating-points-v2 = <&suspendable_ddr_bw_opp_table>;
-		qcom,active-only;
-	};
-
-	npu_npu_ddr_bwmon: qcom,npu-npu-ddr-bwmon@9960300 {
-		compatible = "qcom,bimc-bwmon4";
-		reg = <0x9960300 0x300>, <0x9960200 0x200>;
-		reg-names = "base", "global_base";
-		interrupts = <GIC_SPI 365 IRQ_TYPE_LEVEL_HIGH>;
-		qcom,mport = <0>;
-		qcom,hw-timer-hz = <19200000>;
-		qcom,target-dev = <&npu_npu_ddr_bw>;
-		qcom,count-unit = <0x10000>;
-	};
-
-	qcom,devfreq-l3 {
-		compatible = "qcom,devfreq-fw";
-		reg = <0x18321000 0x4>, <0x18321110 0x500>, <0x18321920 0x4>,
-		<0x18321700 0x4>;
-		reg-names = "en-base", "ftbl-base", "perf-base", "pstate-base";
-
-		qcom,ftbl-row-size = <32>;
-
-		cpu0_cpu_l3_lat: qcom,cpu0-cpu-l3-lat {
-			compatible = "qcom,devfreq-fw-voter";
-		};
-
-		cpu4_cpu_l3_lat: qcom,cpu4-cpu-l3-lat {
-			compatible = "qcom,devfreq-fw-voter";
-		};
-
-		cpu7_cpu_l3_lat: qcom,cpu7-cpu-l3-lat {
-			compatible = "qcom,devfreq-fw-voter";
-		};
-
-		cdsp_cdsp_l3_lat: qcom,cdsp-cdsp-l3-lat {
-			compatible = "qcom,devfreq-fw-voter";
-		};
+	cpu0_cpu_l3_tbl: qcom,cpu0-cpu-l3-tbl {
+		qcom,core-dev-table =
+			<  300000  300000000 >,
+			<  480000  403200000 >,
+			<  672000  480000000 >,
+			<  768000  576000000 >,
+			<  864000  672000000 >,
+			<  979200  768000000 >,
+			< 1075200  864000000 >,
+			< 1267200  960000000 >;
 	};
 
 	cpu0_cpu_llcc_lat: qcom,cpu0-cpu-llcc-lat {
-		compatible = "qcom,devbw";
-		governor = "performance";
-		interconnects = <&gem_noc MASTER_APPSS_PROC
-				&gem_noc SLAVE_LLCC>;
-		qcom,active-only;
-		operating-points-v2 = <&llcc_bw_opp_table>;
-	};
-
-	cpu4_cpu_llcc_lat: qcom,cpu4-cpu-llcc-lat {
-		compatible = "qcom,devbw";
-		governor = "performance";
+		compatible = "qcom,devfreq-icc";
+		governor = "mem_latency";
 		interconnects = <&gem_noc MASTER_APPSS_PROC
 				&gem_noc SLAVE_LLCC>;
 		qcom,active-only;
@@ -1044,24 +1000,8 @@
 	};
 
 	cpu0_llcc_ddr_lat: qcom,cpu0-llcc-ddr-lat {
-		compatible = "qcom,devbw";
-		governor = "performance";
-		interconnects = <&mc_virt MASTER_LLCC &mc_virt SLAVE_EBI1>;
-		qcom,active-only;
-		operating-points-v2 = <&ddr_bw_opp_table>;
-	};
-
-	cpu4_llcc_ddr_lat: qcom,cpu4-llcc-ddr-lat {
-		compatible = "qcom,devbw";
-		governor = "performance";
-		interconnects = <&mc_virt MASTER_LLCC &mc_virt SLAVE_EBI1>;
-		qcom,active-only;
-		operating-points-v2 = <&ddr_bw_opp_table>;
-	};
-
-	cpu4_cpu_ddr_latfloor: qcom,cpu4-cpu-ddr-latfloor {
-		compatible = "qcom,devbw";
-		governor = "performance";
+		compatible = "qcom,devfreq-icc-ddr";
+		governor = "mem_latency";
 		interconnects = <&mc_virt MASTER_LLCC &mc_virt SLAVE_EBI1>;
 		qcom,active-only;
 		operating-points-v2 = <&ddr_bw_opp_table>;
@@ -1076,15 +1016,7 @@
 			qcom,cpulist = <&CPU0 &CPU1 &CPU2 &CPU3>;
 			qcom,target-dev = <&cpu0_cpu_l3_lat>;
 			qcom,cachemiss-ev = <0x17>;
-			qcom,core-dev-table =
-				<  300000  300000000 >,
-				<  480000  403200000 >,
-				<  672000  480000000 >,
-				<  768000  576000000 >,
-				<  864000  672000000 >,
-				<  979200  768000000 >,
-				< 1075200  864000000 >,
-				< 1267200  960000000 >;
+			qcom,core-dev-table = <&cpu0_cpu_l3_tbl>;
 		};
 
 		cpu0_cpu_llcc_latmon: qcom,cpu0-cpu-llcc-latmon {
@@ -1112,6 +1044,81 @@
 		};
 	};
 
+	cpu4_cpu_l3_lat: qcom,cpu4-cpu-l3-lat {
+		compatible = "qcom,devfreq-icc-l3";
+		reg = <0x18321110 0x500>;
+		reg-names = "ftbl-base";
+		qcom,ftbl-row-size = <0x20>;
+		governor = "mem_latency";
+		interconnects = <&osm_l3 MASTER_OSM_L3_APPS
+				&osm_l3 SLAVE_OSM_L3_CLUSTER1>;
+	};
+
+	cpu4_cpu_l3_tbl: qcom,cpu4_cpu_l3_tbl {
+		qcom,core-dev-table =
+			<  300000  300000000 >,
+			<  768000  576000000 >,
+			< 1152000  768000000 >,
+			< 1344000  960000000 >,
+			< 1689600 1228800000 >,
+			< 2016000 1344000000 >;
+	};
+
+	cpu4_cpu_llcc_lat: qcom,cpu4-cpu-llcc-lat {
+		compatible = "qcom,devfreq-icc";
+		governor = "mem_latency";
+		interconnects = <&gem_noc MASTER_APPSS_PROC
+				&gem_noc SLAVE_LLCC>;
+		qcom,active-only;
+		operating-points-v2 = <&llcc_bw_opp_table>;
+	};
+
+	cpu4_llcc_ddr_lat: qcom,cpu4-llcc-ddr-lat {
+		compatible = "qcom,devfreq-icc-ddr";
+		governor = "mem_latency";
+		interconnects = <&mc_virt MASTER_LLCC &mc_virt SLAVE_EBI1>;
+		qcom,active-only;
+		operating-points-v2 = <&ddr_bw_opp_table>;
+	};
+
+	cpu4_cpu_ddr_latfloor: qcom,cpu4-cpu-ddr-latfloor {
+		compatible = "qcom,devfreq-icc-ddr";
+		governor = "compute";
+		interconnects = <&mc_virt MASTER_LLCC &mc_virt SLAVE_EBI1>;
+		qcom,active-only;
+		operating-points-v2 = <&ddr_bw_opp_table>;
+	};
+
+	cdsp_cdsp_l3_lat: qcom,cdsp-cdsp-l3-lat {
+		compatible = "qcom,devfreq-icc-l3";
+		reg = <0x18321920 0x4>;
+		reg-names = "perf-base";
+		qcom,ftbl-row-size = <0x20>;
+		governor = "powersave";
+		interconnects = <&osm_l3 MASTER_OSM_L3_APPS
+				&osm_l3 SLAVE_OSM_L3_MISC>;
+	};
+
+	cpu7_cpu_l3_lat: qcom,cpu7-cpu-l3-lat {
+		compatible = "qcom,devfreq-icc-l3";
+		reg = <0x18321110 0x500>;
+		reg-names = "ftbl-base";
+		qcom,ftbl-row-size = <0x20>;
+		governor = "compute";
+		interconnects = <&osm_l3 MASTER_OSM_L3_APPS
+				&osm_l3 SLAVE_OSM_L3_CLUSTER2>;
+	};
+
+	cpu7_cpu_l3_tbl: qcom,cpu7_cpu_l3_tbl {
+		qcom,core-dev-table =
+			<  300000  300000000 >,
+			<  768000  576000000 >,
+			< 1152000  768000000 >,
+			< 1344000  960000000 >,
+			< 1689600 1228800000 >,
+			< 2016000 1344000000 >;
+	};
+
 	cpu4_memlat_cpugrp: qcom,cpu4-cpugrp {
 		compatible = "qcom,arm-memlat-cpugrp";
 		qcom,cpulist = <&CPU4 &CPU5 &CPU6 &CPU7>;
@@ -1121,13 +1128,7 @@
 			qcom,cpulist = <&CPU4 &CPU5 &CPU6>;
 			qcom,target-dev = <&cpu4_cpu_l3_lat>;
 			qcom,cachemiss-ev = <0x17>;
-			qcom,core-dev-table =
-				<  300000  300000000 >,
-				<  768000  576000000 >,
-				< 1152000  768000000 >,
-				< 1344000  960000000 >,
-				< 1689600 1228800000 >,
-				< 2016000 1344000000 >;
+			qcom,core-dev-table = <&cpu4_cpu_l3_tbl>;
 		};
 
 		cpu7_cpu_l3_latmon: qcom,cpu7-cpu-l3-latmon {
@@ -1135,13 +1136,7 @@
 			qcom,cpulist = <&CPU7>;
 			qcom,target-dev = <&cpu7_cpu_l3_lat>;
 			qcom,cachemiss-ev = <0x17>;
-			qcom,core-dev-table =
-				<  300000  300000000 >,
-				<  768000  576000000 >,
-				< 1152000  768000000 >,
-				< 1344000  960000000 >,
-				< 1689600 1228800000 >,
-				< 2016000 1344000000 >;
+			qcom,core-dev-table = <&cpu7_cpu_l3_tbl>;
 		};
 
 		cpu4_cpu_llcc_latmon: qcom,cpu4-cpu-llcc-latmon {
@@ -1184,6 +1179,41 @@
 				< 2016000 MHZ_TO_MBPS(1017, 4) >,
 				< 2054400 MHZ_TO_MBPS(2092, 4) >;
 		};
+	};
+
+	suspendable_ddr_bw_opp_table: suspendable-ddr-bw-opp-table {
+		compatible = "operating-points-v2";
+		BW_OPP_ENTRY_DDR(   0, 4, 0x80); /*    0 MB/s */
+		BW_OPP_ENTRY_DDR( 200, 4, 0x80); /*  762 MB/s */
+		BW_OPP_ENTRY_DDR( 300, 4, 0x80); /* 1144 MB/s */
+		BW_OPP_ENTRY_DDR( 451, 4, 0x80); /* 1720 MB/s */
+		BW_OPP_ENTRY_DDR( 547, 4, 0x80); /* 2086 MB/s */
+		BW_OPP_ENTRY_DDR( 681, 4, 0x80); /* 2597 MB/s */
+		BW_OPP_ENTRY_DDR( 768, 4, 0x80); /* 2929 MB/s */
+		BW_OPP_ENTRY_DDR(1017, 4, 0x80); /* 3879 MB/s */
+		BW_OPP_ENTRY_DDR(1296, 4, 0x80); /* 4943 MB/s */
+		BW_OPP_ENTRY_DDR(1555, 4, 0x80); /* 5931 MB/s */
+		BW_OPP_ENTRY_DDR(1804, 4, 0x80); /* 6881 MB/s */
+		BW_OPP_ENTRY_DDR(2092, 4, 0x80); /* 7980 MB/s */
+	};
+
+	npu_npu_ddr_bw: qcom,npu-npu-ddr-bw {
+		compatible = "qcom,devfreq-icc-ddr";
+		governor = "bw_hwmon";
+		interconnects = <&compute_noc MASTER_NPU &mc_virt SLAVE_EBI1>;
+		operating-points-v2 = <&suspendable_ddr_bw_opp_table>;
+		qcom,active-only;
+	};
+
+	npu_npu_ddr_bwmon: qcom,npu-npu-ddr-bwmon@9960300 {
+		compatible = "qcom,bimc-bwmon4";
+		reg = <0x9960300 0x300>, <0x9960200 0x200>;
+		reg-names = "base", "global_base";
+		interrupts = <GIC_SPI 365 IRQ_TYPE_LEVEL_HIGH>;
+		qcom,mport = <0>;
+		qcom,hw-timer-hz = <19200000>;
+		qcom,target-dev = <&npu_npu_ddr_bw>;
+		qcom,count-unit = <0x10000>;
 	};
 
 	cpu_pmu: cpu-pmu {
