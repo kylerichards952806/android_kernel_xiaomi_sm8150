@@ -13,6 +13,7 @@
 
 #include <dt-bindings/spmi/spmi.h>
 #include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/iio/qti_power_supply_iio.h>
 #include <dt-bindings/iio/qcom,spmi-vadc.h>
 
 &spmi_bus {
@@ -160,12 +161,56 @@
 		};
 
 		pm8150b_charger: qcom,qpnp-smb5 {
-			compatible = "qcom,qpnp-smb5";
+			compatible = "qcom,pm8150-smb5";
 			#address-cells = <1>;
 			#size-cells = <1>;
 			#cooling-cells = <2>;
+			#io-channel-cells = <1>;
 
 			qcom,pmic-revid = <&pm8150b_revid>;
+
+			io-channels = <&pm8150b_vadc ADC5_MID_CHG_DIV6>,
+					<&pm8150b_vadc ADC5_USB_IN_V_16>,
+					<&pm8150b_vadc ADC5_CHG_TEMP>,
+					<&pm8150b_vadc ADC5_USB_IN_I>,
+					<&pm8150b_vadc ADC5_SBUx>,
+					<&pm8150b_vadc ADC5_VPH_PWR>,
+					<&pm8150b_vadc ADC5_DIE_TEMP>,
+					<&pm8150b_fg PSY_IIO_DEBUG_BATTERY>,
+					<&pm8150b_fg PSY_IIO_CAPACITY>,
+					<&pm8150b_fg PSY_IIO_REAL_CAPACITY>,
+					<&pm8150b_fg PSY_IIO_CC_SOC>,
+					<&pm8150b_fg PSY_IIO_CURRENT_NOW>,
+					<&pm8150b_fg PSY_IIO_VOLTAGE_NOW>,
+					<&pm8150b_fg PSY_IIO_VOLTAGE_MAX>,
+					<&pm8150b_fg PSY_IIO_CHARGE_FULL>,
+					<&pm8150b_fg PSY_IIO_RESISTANCE_ID>,
+					<&pm8150b_fg PSY_IIO_TEMP>,
+					<&pm8150b_fg PSY_IIO_CHARGE_COUNTER>,
+					<&pm8150b_fg PSY_IIO_CYCLE_COUNT>,
+					<&pm8150b_fg PSY_IIO_CHARGE_FULL_DESIGN>,
+					<&pm8150b_fg PSY_IIO_TIME_TO_FULL_NOW>;
+			io-channel-names = "mid_voltage",
+					"usb_in_voltage",
+					"chg_temp",
+					"usb_in_current",
+					"sbux_res",
+					"vph_voltage",
+					"die_temp",
+					"debug_battery",
+					"capacity",
+					"real_capacity",
+					"cc_soc",
+					"current_now",
+					"voltage_now",
+					"voltage_max",
+					"charge_full",
+					"resistance_id",
+					"temp",
+					"charge_counter",
+					"cycle_count",
+					"charge_full_design",
+					"time_to_full_now";
 
 			qcom,thermal-mitigation
 					= <3000000 1500000 1000000 500000>;
