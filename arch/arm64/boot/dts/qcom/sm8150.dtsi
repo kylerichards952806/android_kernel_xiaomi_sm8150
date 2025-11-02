@@ -75,6 +75,7 @@
 			enable-method = "psci";
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <100>;
+			cpu-idle-states = <&SLVR_RAIL_OFF>;
 			qcom,freq-domain = <&cpufreq_hw 0 4>;
 			next-level-cache = <&L2_0>;
 			qcom,lmh-dcvs = <&lmh_dcvs0>;
@@ -112,6 +113,7 @@
 			enable-method = "psci";
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <100>;
+			cpu-idle-states = <&SLVR_RAIL_OFF>;
 			qcom,freq-domain = <&cpufreq_hw 0 4>;
 			next-level-cache = <&L2_1>;
 			qcom,lmh-dcvs = <&lmh_dcvs0>;
@@ -144,6 +146,7 @@
 			enable-method = "psci";
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <100>;
+			cpu-idle-states = <&SLVR_RAIL_OFF>;
 			qcom,freq-domain = <&cpufreq_hw 0 4>;
 			next-level-cache = <&L2_2>;
 			qcom,lmh-dcvs = <&lmh_dcvs0>;
@@ -176,6 +179,7 @@
 			enable-method = "psci";
 			capacity-dmips-mhz = <1024>;
 			dynamic-power-coefficient = <100>;
+			cpu-idle-states = <&SLVR_RAIL_OFF>;
 			qcom,freq-domain = <&cpufreq_hw 0 4>;
 			next-level-cache = <&L2_3>;
 			qcom,lmh-dcvs = <&lmh_dcvs0>;
@@ -208,6 +212,7 @@
 			enable-method = "psci";
 			capacity-dmips-mhz = <1740>;
 			dynamic-power-coefficient = <374>;
+			cpu-idle-states = <&GOLD_RAIL_OFF>;
 			qcom,freq-domain = <&cpufreq_hw 1 4>;
 			next-level-cache = <&L2_4>;
 			qcom,lmh-dcvs = <&lmh_dcvs1>;
@@ -249,6 +254,7 @@
 			enable-method = "psci";
 			capacity-dmips-mhz = <1740>;
 			dynamic-power-coefficient = <374>;
+			cpu-idle-states = <&GOLD_RAIL_OFF>;
 			qcom,freq-domain = <&cpufreq_hw 1 4>;
 			next-level-cache = <&L2_5>;
 			qcom,lmh-dcvs = <&lmh_dcvs1>;
@@ -290,6 +296,7 @@
 			enable-method = "psci";
 			capacity-dmips-mhz = <1740>;
 			dynamic-power-coefficient = <374>;
+			cpu-idle-states = <&GOLD_RAIL_OFF>;
 			qcom,freq-domain = <&cpufreq_hw 1 4>;
 			next-level-cache = <&L2_6>;
 			qcom,lmh-dcvs = <&lmh_dcvs1>;
@@ -331,6 +338,7 @@
 			enable-method = "psci";
 			capacity-dmips-mhz = <1740>;
 			dynamic-power-coefficient = <431>;
+			cpu-idle-states = <&GOLD_RAIL_OFF>;
 			qcom,freq-domain = <&cpufreq_hw 2 4>;
 			next-level-cache = <&L2_7>;
 			qcom,lmh-dcvs = <&lmh_dcvs1>;
