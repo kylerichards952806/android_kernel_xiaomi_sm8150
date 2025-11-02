@@ -39,7 +39,7 @@
 			compatible = "qcom,spmi-temp-alarm";
 			reg = <0x2400 0x100>;
 			interrupts = <0x2 0x24 0x0 IRQ_TYPE_EDGE_RISING>;
-			io-channels = <&pm8150b_vadc ADC_DIE_TEMP>;
+			io-channels = <&pm8150b_vadc ADC5_DIE_TEMP>;
 			io-channel-names = "thermal";
 			#thermal-sensor-cells = <0>;
 			qcom,temperature-threshold-set = <1>;
@@ -103,56 +103,56 @@
 
 			/* Channel node */
 			ref_gnd {
-				reg = <ADC_REF_GND>;
+				reg = <ADC5_REF_GND>;
 				label = "ref_gnd";
 				qcom,pre-scaling = <1 1>;
 			};
 
 			vref_1p25 {
-				reg = <ADC_1P25VREF>;
+				reg = <ADC5_1P25VREF>;
 				label = "vref_1p25";
 				qcom,pre-scaling = <1 1>;
 			};
 
 			die_temp {
-				reg = <ADC_DIE_TEMP>;
+				reg = <ADC5_DIE_TEMP>;
 				label = "die_temp";
 				qcom,pre-scaling = <1 1>;
 			};
 
 			chg_temp {
-				reg = <ADC_CHG_TEMP>;
+				reg = <ADC5_CHG_TEMP>;
 				label = "chg_temp";
 				qcom,pre-scaling = <1 1>;
 			};
 
 			v_i_int_ext {
-				reg = <ADC_INT_EXT_ISENSE_VBAT_VDATA>;
+				reg = <ADC5_INT_EXT_ISENSE_VBAT_VDATA>;
 				label = "v_i_int_vbat_vdata";
 				qcom,pre-scaling = <1 1>;
 			};
 
 			v_i_ext {
-				reg = <ADC_EXT_ISENSE_VBAT_VDATA>;
+				reg = <ADC5_EXT_ISENSE_VBAT_VDATA>;
 				label = "v_i_int_ext_vbat_vdata";
 				qcom,pre-scaling = <1 1>;
 			};
 
 			v_i_parallel {
-				reg = <ADC_PARALLEL_ISENSE_VBAT_VDATA>;
+				reg = <ADC5_PARALLEL_ISENSE_VBAT_VDATA>;
 				label = "v_i_parallel_vbat_vdata";
 				qcom,pre-scaling = <1 1>;
 			};
 
 			smb1390_therm {
-				reg = <ADC_AMUX_THM2>;
+				reg = <ADC5_AMUX_THM2>;
 				label = "smb1390_therm";
 				qcom,hw-settle-time = <200>;
 				qcom,pre-scaling = <1 1>;
 			};
 
 			smb1355_therm {
-				reg = <ADC_AMUX_THM2_PU2>;
+				reg = <ADC5_AMUX_THM2_100K_PU>;
 				label = "smb1355_therm";
 				qcom,ratiometric;
 				qcom,hw-settle-time = <200>;
@@ -168,7 +168,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			#thermal-sensor-cells = <1>;
-			io-channels = <&pm8150b_vadc ADC_AMUX_THM1_PU2>;
+			io-channels = <&pm8150b_vadc ADC5_AMUX_THM1_100K_PU>;
 			qcom,pmic-revid = <&pm8150b_revid>;
 		};
 
@@ -561,7 +561,7 @@
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
 		thermal-governor = "user_space";
-		thermal-sensors = <&pm8150b_adc_tm ADC_AMUX_THM2_PU2>;
+		thermal-sensors = <&pm8150b_adc_tm ADC5_AMUX_THM2_100K_PU>;
 		wake-capable-sensor;
 		trips {
 			active-config0 {
