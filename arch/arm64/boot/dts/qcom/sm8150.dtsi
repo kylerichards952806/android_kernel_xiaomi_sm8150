@@ -2375,7 +2375,7 @@
 				 <&apps_smmu 0x2041 0x0>;
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 		qcom,msm_fastrpc_compute_cb4 {
@@ -2385,7 +2385,7 @@
 				 <&apps_smmu 0x24 0x3400>;
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 		qcom,msm_fastrpc_compute_cb5 {
@@ -2395,7 +2395,7 @@
 				 <&apps_smmu 0x25 0x3400>;
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 		qcom,msm_fastrpc_compute_cb6 {
@@ -2404,7 +2404,7 @@
 			iommus = <&apps_smmu 0x6 0x3460>;
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 		qcom,msm_fastrpc_compute_cb7 {
@@ -2413,7 +2413,7 @@
 			iommus = <&apps_smmu 0x7 0x3460>;
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 		qcom,msm_fastrpc_compute_cb8 {
@@ -2422,7 +2422,7 @@
 			iommus = <&apps_smmu 0x8 0x3460>;
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 		qcom,msm_fastrpc_compute_cb2 {
@@ -2432,7 +2432,7 @@
 				 <&apps_smmu 0x22 0x3400>;
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 		qcom,msm_fastrpc_compute_cb3 {
@@ -2443,7 +2443,7 @@
 				 <&apps_smmu 0x2023 0x0>;
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 		qcom,msm_fastrpc_compute_cb9 {
@@ -2454,7 +2454,7 @@
 			qcom,iommu-dma-addr-pool = <0x60000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
 			qcom,iommu-vmid = <0xA>;	/* VMID_CP_PIXEL */
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 		qcom,msm_fastrpc_compute_cb10 {
@@ -2463,7 +2463,7 @@
 			iommus = <&apps_smmu 0x1b23 0x0>;
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 		qcom,msm_fastrpc_compute_cb11 {
@@ -2472,7 +2472,7 @@
 			iommus = <&apps_smmu 0x1b24 0x0>;
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 		qcom,msm_fastrpc_compute_cb12 {
@@ -2481,7 +2481,7 @@
 			iommus = <&apps_smmu 0x1b25 0x0>;
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 #if 0
@@ -2491,7 +2491,7 @@
 			iommus = <&apps_smmu 0x5a1 0x0>;
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 		qcom,msm_fastrpc_compute_cb14 {
@@ -2500,7 +2500,7 @@
 			iommus = <&apps_smmu 0x5a2 0x0>;
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 
 		qcom,msm_fastrpc_compute_cb15 {
@@ -2510,7 +2510,7 @@
 			qcom,iommu-dma-addr-pool = <0x80000000 0x78000000>;
 			qcom,iommu-faults = "stall-disable", "HUPCF";
 			shared-cb = <4>;
-			dma-coherent;
+			dma-coherent-hint-cached;
 		};
 #endif
 	};
