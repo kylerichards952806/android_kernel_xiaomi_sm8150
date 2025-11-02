@@ -417,6 +417,12 @@
 			qcom,pmic-revid = <&pm8150b_revid>;
 			qcom,pmic-pbs = <&pm8150b_pbs1>;
 			status = "okay";
+			#io-channel-cells = <1>;
+
+			io-channels = <&pm8150b_charger PSY_IIO_CHARGE_DONE>,
+					  <&pm8150b_charger PSY_IIO_RECHARGE_SOC>;
+			io-channel-names = "charge_done",
+					   "recharge_soc";
 
 			qcom,fg-batt-soc@4000 {
 				status = "okay";
