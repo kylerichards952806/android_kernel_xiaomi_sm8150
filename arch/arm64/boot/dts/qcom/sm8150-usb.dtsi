@@ -89,7 +89,7 @@
 			usb-core-id = <0>;
 			tx-fifo-resize;
 			maximum-speed = "super-speed-plus";
-			dr_mode = "drd";
+			dr_mode = "otg";
 		};
 
 		qcom,usbbam@a704000 {
@@ -410,7 +410,7 @@
 			usb-core-id = <1>;
 			tx-fifo-resize;
 			maximum-speed = "super-speed-plus";
-			dr_mode = "drd";
+			dr_mode = "otg";
 		};
 	};
 
