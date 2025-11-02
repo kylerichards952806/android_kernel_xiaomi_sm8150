@@ -417,6 +417,10 @@
 		compatible = "simple-bus";
 	};
 
+	qcom-secure-buffer {
+		compatible = "qcom,secure-buffer";
+	};
+
 	clocks {
 		xo_board: xo-board {
 			compatible = "fixed-clock";
@@ -435,6 +439,9 @@
 };
 
 &firmware {
+	scm {
+		compatible = "qcom,scm";
+	};
 	android {
 		compatible = "android,firmware";
 		shared_meta: vbmeta {
@@ -1238,6 +1245,12 @@
 	qcom,msm-rtb {
 		compatible = "qcom,msm-rtb";
 		qcom,rtb-size = <0x100000>;
+	};
+
+	pil_scm_pas {
+		compatible = "qcom,pil-tz-scm-pas";
+		interconnects = <&aggre2_noc MASTER_CRYPTO
+				&mc_virt SLAVE_EBI1>;
 	};
 
 	qcom,aop-ddr-msgs {
@@ -2101,6 +2114,10 @@
 			qcom,dump-node = <&L2_TLB_700>;
 			qcom,dump-id = <0x127>;
 		};
+	};
+
+	qtee_shmbridge {
+		compatible = "qcom,tee-shared-memory-bridge";
 	};
 
 	qcom,memshare {
