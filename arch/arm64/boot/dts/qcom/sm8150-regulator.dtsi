@@ -494,8 +494,6 @@
 	rpmh-regulator-mxlvl {
 		compatible = "qcom,rpmh-arc-regulator";
 		qcom,resource-name = "mx.lvl";
-		pm8150l_s4_mmcx_sup_level-parent-supply =
-						<&VDD_CX_MMCX_SUPPLY_LEVEL>;
 
 		VDD_MX_LEVEL: S4C_LEVEL:
 		pm8150l_s4_level: regulator-pm8150l-s4-level {
@@ -524,6 +522,8 @@
 		VDD_MX_MMCX_SUPPLY_LEVEL: regulator-pm8150l-s4-mmcx-sup-level {
 			regulator-name = "pm8150l_s4_mmcx_sup_level";
 			qcom,set = <RPMH_REGULATOR_SET_ALL>;
+			pm8150l_s4_mmcx_sup_level-parent-supply =
+						<&VDD_CX_MMCX_SUPPLY_LEVEL>;
 			regulator-min-microvolt =
 				<RPMH_REGULATOR_LEVEL_RETENTION>;
 			regulator-max-microvolt =
@@ -545,13 +545,13 @@
 	rpmh-regulator-mmcxlvl {
 		compatible = "qcom,rpmh-arc-regulator";
 		qcom,resource-name = "mmcx.lvl";
-		pm8150l_s5_level-parent-supply = <&VDD_MX_MMCX_SUPPLY_LEVEL>;
 		proxy-supply = <&VDD_MMCX_LEVEL>;
 
 		VDD_MMCX_LEVEL: S5C_LEVEL:
 		pm8150l_s5_level: regulator-pm8150l-s5-level {
 			regulator-name = "pm8150l_s5_level";
 			qcom,set = <RPMH_REGULATOR_SET_ALL>;
+			pm8150l_s5_level-parent-supply = <&VDD_MX_MMCX_SUPPLY_LEVEL>;
 			regulator-min-microvolt
 				= <RPMH_REGULATOR_LEVEL_LOW_SVS>;
 			regulator-max-microvolt
@@ -601,14 +601,13 @@
 	rpmh-regulator-cxlvl {
 		compatible = "qcom,rpmh-arc-regulator";
 		qcom,resource-name = "cx.lvl";
-		pm8150l_s6_level-parent-supply = <&VDD_MX_LEVEL>;
-		pm8150l_s6_level_ao-parent-supply = <&VDD_MX_LEVEL_AO>;
 		proxy-supply = <&VDD_CX_MMCX_SUPPLY_LEVEL>;
 
 		VDD_CX_LEVEL: S6C_LEVEL:
 		pm8150l_s6_level: regulator-pm8150l-s6-level {
 			regulator-name = "pm8150l_s6_level";
 			qcom,set = <RPMH_REGULATOR_SET_ALL>;
+			pm8150l_s6_level-parent-supply = <&VDD_MX_LEVEL>;
 			regulator-min-microvolt
 				= <RPMH_REGULATOR_LEVEL_RETENTION>;
 			regulator-max-microvolt
@@ -622,6 +621,7 @@
 		pm8150l_s6_level_ao: regulator-pm8150l-s6-level-ao {
 			regulator-name = "pm8150l_s6_level_ao";
 			qcom,set = <RPMH_REGULATOR_SET_ACTIVE>;
+			pm8150l_s6_level_ao-parent-supply = <&VDD_MX_LEVEL_AO>;
 			regulator-min-microvolt
 				= <RPMH_REGULATOR_LEVEL_RETENTION>;
 			regulator-max-microvolt
