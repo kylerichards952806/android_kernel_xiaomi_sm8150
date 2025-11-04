@@ -2616,7 +2616,7 @@
 	};
 
 	apcs_glb: mailbox@17c00000 {
-		compatible = "qcom,sm8150-apcs-hmss-global";
+		compatible = "qcom,sm8150-apss-shared";
 		reg = <0x17c00000 0x1000>;
 
 		#mbox-cells = <1>;
