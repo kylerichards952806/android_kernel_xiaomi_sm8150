@@ -2233,6 +2233,7 @@
 			<&clock_gcc GCC_UFS_MEM_CLKREF_CLK>,
 			<&clock_gcc GCC_UFS_PHY_PHY_AUX_CLK>;
 
+		resets = <&ufshc_mem 0>;
 		status = "disabled";
 	};
 
@@ -2243,6 +2244,7 @@
 		interrupts = <GIC_SPI 265 IRQ_TYPE_LEVEL_HIGH>;
 		phys = <&ufsphy_mem>;
 		phy-names = "ufsphy";
+		#reset-cells = <1>;
 
 		lanes-per-direction = <2>;
 		dev-ref-clk-freq = <0>; /* 19.2 MHz */
@@ -2338,9 +2340,7 @@
 		"HS_RB_G1_L2", "HS_RB_G2_L2", "HS_RB_G3_L2", "HS_RB_G4_L2",
 		"MAX";
 
-		pinctrl-names = "dev-reset-assert", "dev-reset-deassert";
-		pinctrl-0 = <&ufs_dev_reset_assert>;
-		pinctrl-1 = <&ufs_dev_reset_deassert>;
+		reset-gpios = <&tlmm 175 GPIO_ACTIVE_LOW>;
 
 		resets = <&clock_gcc GCC_UFS_PHY_BCR>;
 		reset-names = "core_reset";
