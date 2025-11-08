@@ -274,8 +274,9 @@
 };
 
 &mdss_mdp {
-	connectors = <&smmu_sde_unsec &smmu_sde_sec &sde_rscc &sde_wb &sde_dp
-		&sde_dsi &sde_dsi1>;
+	/* TODO: Fix sde_dp */
+	connectors = <&smmu_sde_unsec &smmu_sde_sec &sde_rscc &sde_wb &sde_dsi
+		&sde_dsi1>;
 };
 
 /* PHY TIMINGS REVISION T */
