@@ -137,19 +137,6 @@ And public attribution of xiaomi platforms(like J20S and so and)
 				   800000  800000  700000  700000  600000  600000  600000
 				   500000  400000>;
 
-
-	io-channels = <&pm8150b_vadc ADC5_MID_CHG_DIV6>,
-		      <&pm8150b_vadc ADC5_USB_IN_V_16>,
-		      <&pm8150b_vadc ADC5_USB_IN_I>,
-		      <&pm8150b_vadc ADC5_SBUx>,
-		      <&pm8150b_vadc ADC5_VPH_PWR>,
-		      <&pm8150b_vadc ADC5_CHG_TEMP>;
-	io-channel-names = "mid_voltage",
-			   "usb_in_voltage",
-			   "usb_in_current",
-			   "sbux_res",
-			   "vph_voltage",
-			   "chg_temp";
 //	qcom,battery-data = <&mtp_batterydata>;
 	dpdm-supply = <&usb2_phy0>;
 	qcom,distinguish-qc-class-ab;
