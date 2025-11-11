@@ -1536,21 +1536,14 @@
 		qcom,bcm-voters = <&apps_bcm_voter>, <&disp_bcm_voter>;
 	};
 
-	ipa_virt: interconnect@1 {
-		compatible = "qcom,sm8150-ipa_virt";
-		#interconnect-cells = <1>;
-		qcom,bcm-voter-names = "hlos";
-		qcom,bcm-voters = <&apps_bcm_voter>;
-	};
-
-	camnoc_virt: interconnect@2 {
+	camnoc_virt: interconnect@1 {
 		compatible = "qcom,sm8150-camnoc_virt";
 		#interconnect-cells = <1>;
 		qcom,bcm-voter-names = "hlos";
 		qcom,bcm-voters = <&apps_bcm_voter>;
 	};
 
-	compute_noc: interconnect@3 {
+	compute_noc: interconnect@2 {
 		compatible = "qcom,sm8150-compute_noc";
 		#interconnect-cells = <1>;
 		qcom,bcm-voter-names = "hlos";
