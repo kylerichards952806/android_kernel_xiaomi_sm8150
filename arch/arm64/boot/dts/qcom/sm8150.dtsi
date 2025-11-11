@@ -1590,6 +1590,7 @@
 		#interconnect-cells = <1>;
 		qcom,bcm-voter-names = "hlos";
 		qcom,bcm-voters = <&apps_bcm_voter>;
+		clocks = <&clock_rpmh RPMH_IPA_CLK>;
 	};
 
 	mmss_noc: interconnect@1740000 {
