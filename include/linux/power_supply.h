@@ -157,6 +157,24 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_TIME_TO_EMPTY_AVG,
 	POWER_SUPPLY_PROP_TIME_TO_FULL_NOW,
 	POWER_SUPPLY_PROP_TIME_TO_FULL_AVG,
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
+	/* ds28e16 battery verify properties start */
+	POWER_SUPPLY_PROP_ROMID,
+	POWER_SUPPLY_PROP_DS_STATUS,
+	POWER_SUPPLY_PROP_PAGENUMBER,
+	POWER_SUPPLY_PROP_PAGEDATA,
+	POWER_SUPPLY_PROP_AUTHEN_RESULT,
+	POWER_SUPPLY_PROP_SESSION_SEED,
+	POWER_SUPPLY_PROP_S_SECRET,
+	POWER_SUPPLY_PROP_CHALLENGE,
+	POWER_SUPPLY_PROP_AUTH_ANON,
+	POWER_SUPPLY_PROP_AUTH_BDCONST,
+	POWER_SUPPLY_PROP_PAGE0_DATA,
+	POWER_SUPPLY_PROP_PAGE1_DATA,
+	POWER_SUPPLY_PROP_VERIFY_MODEL_NAME,
+	POWER_SUPPLY_PROP_CHIP_OK,
+	/* ds28e16 battery verify properties end */
+#endif
 	POWER_SUPPLY_PROP_TYPE, /* use power_supply.type instead */
 	POWER_SUPPLY_PROP_USB_TYPE,
 	POWER_SUPPLY_PROP_SCOPE,
@@ -194,6 +212,9 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_USB_HVDCP_3,		/* Efficient High Voltage DCP */
 	POWER_SUPPLY_TYPE_USB_HVDCP_3P5,	/* Efficient High Voltage DCP */
 	POWER_SUPPLY_TYPE_USB_FLOAT,		/* Floating charger */
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
+	POWER_SUPPLY_TYPE_BATT_VERIFY,          /* battery verify */
+#endif
 };
 
 enum power_supply_usb_type {
@@ -243,6 +264,9 @@ enum power_supply_notifier_events {
 union power_supply_propval {
 	int intval;
 	const char *strval;
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
+	unsigned char arrayval[50];
+#endif
 };
 
 struct device_node;

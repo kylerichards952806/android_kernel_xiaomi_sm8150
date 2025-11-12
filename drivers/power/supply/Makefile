@@ -97,4 +97,5 @@ qti_battery_charger_main-y += qti_battery_charger.o qti_typec_class.o
 obj-$(CONFIG_QCOM_POWER_SUPPLY)		+= qcom/
 
 # xiaomi
+obj-y	+= maxim/
 obj-y	+= ti/

@@ -57,6 +57,9 @@ static const char * const POWER_SUPPLY_TYPE_TEXT[] = {
 	[POWER_SUPPLY_TYPE_USB_PD_DRP]		= "USB_PD_DRP",
 	[POWER_SUPPLY_TYPE_APPLE_BRICK_ID]	= "BrickID",
 	[POWER_SUPPLY_TYPE_WIRELESS]		= "Wireless",
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
+	[POWER_SUPPLY_TYPE_BATT_VERIFY]		= "Batt_Verify",
+#endif
 };
 
 static const char * const POWER_SUPPLY_USB_TYPE_TEXT[] = {
@@ -206,6 +209,25 @@ static struct power_supply_attr power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(MANUFACTURE_YEAR),
 	POWER_SUPPLY_ATTR(MANUFACTURE_MONTH),
 	POWER_SUPPLY_ATTR(MANUFACTURE_DAY),
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
+	/* battery verify properties start */
+	POWER_SUPPLY_ATTR(ROMID),
+	POWER_SUPPLY_ATTR(DS_STATUS),
+	POWER_SUPPLY_ATTR(PAGENUMBER),
+	POWER_SUPPLY_ATTR(PAGEDATA),
+	POWER_SUPPLY_ATTR(AUTHEN_RESULT),
+	POWER_SUPPLY_ATTR(SESSION_SEED),
+	POWER_SUPPLY_ATTR(S_SECRET),
+	POWER_SUPPLY_ATTR(CHALLENGE),
+	POWER_SUPPLY_ATTR(AUTH_ANON),
+	POWER_SUPPLY_ATTR(AUTH_BDCONST),
+	POWER_SUPPLY_ATTR(PAGE0_DATA),
+	POWER_SUPPLY_ATTR(PAGE1_DATA),
+	POWER_SUPPLY_ATTR(VERIFY_MODEL_NAME),
+	//POWER_SUPPLY_ATTR(MAXIM_BATT_CYCLE_COUNT),
+	POWER_SUPPLY_ATTR(CHIP_OK),
+	/* battery verify properties end */
+#endif
 	/* Properties of type `const char *' */
 	POWER_SUPPLY_ATTR(MODEL_NAME),
 	POWER_SUPPLY_ATTR(MANUFACTURER),
@@ -300,6 +322,26 @@ static ssize_t power_supply_show_property(struct device *dev,
 		ret = power_supply_show_usb_type(dev, psy->desc,
 						&value, buf);
 		break;
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
+	/* battery verify properties start */
+	case POWER_SUPPLY_PROP_ROMID:
+	case POWER_SUPPLY_PROP_DS_STATUS:
+		ret = scnprintf(buf, PAGE_SIZE, "%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
+			value.arrayval[0], value.arrayval[1], value.arrayval[2], value.arrayval[3],
+			value.arrayval[4], value.arrayval[5], value.arrayval[6], value.arrayval[7]);
+		break;
+	case POWER_SUPPLY_PROP_PAGE0_DATA:
+	case POWER_SUPPLY_PROP_PAGE1_DATA:
+	case POWER_SUPPLY_PROP_PAGEDATA:
+		ret = scnprintf(buf, PAGE_SIZE, "%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n",
+			value.arrayval[0], value.arrayval[1], value.arrayval[2], value.arrayval[3],
+			value.arrayval[4], value.arrayval[5], value.arrayval[6], value.arrayval[7],
+			value.arrayval[8], value.arrayval[9], value.arrayval[10], value.arrayval[11],
+			value.arrayval[12], value.arrayval[13], value.arrayval[14], value.arrayval[15]);
+		break;
+	case POWER_SUPPLY_PROP_VERIFY_MODEL_NAME:
+	/* battery verify properties end */
+#endif
 	case POWER_SUPPLY_PROP_MODEL_NAME ... POWER_SUPPLY_PROP_SERIAL_NUMBER:
 		ret = sprintf(buf, "%s\n", value.strval);
 		break;
