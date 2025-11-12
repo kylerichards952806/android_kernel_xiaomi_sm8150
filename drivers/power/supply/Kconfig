@@ -726,4 +726,7 @@ config CHARGER_WILCO
 
 source "drivers/power/supply/qcom/Kconfig"
 
+# Xiaomi
+source "drivers/power/supply/ti/Kconfig"
+
 endif # POWER_SUPPLY
