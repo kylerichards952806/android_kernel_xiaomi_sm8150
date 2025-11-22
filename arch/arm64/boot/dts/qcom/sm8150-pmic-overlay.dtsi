@@ -131,7 +131,11 @@
 };
 
 &usb0 {
+	status = "ok";
 	extcon = <&pm8150b_pdphy>, <&eud>;
+	#io-channel-cells = <1>;
+	io-channels= <&pm8150b_charger PSY_IIO_USB_REAL_TYPE>;
+	io-channel-names = "chg_type";
 };
 
 &usb_qmp_dp_phy {
