@@ -289,6 +289,12 @@ enum dsi_cmd_set_type {
 	DSI_CMD_SET_POST_TIMING_SWITCH,
 	DSI_CMD_SET_QSYNC_ON,
 	DSI_CMD_SET_QSYNC_OFF,
+#if defined(CONFIG_MACH_XIAOMI_SM8150)
+	DSI_CMD_SET_ESD_CHECK,
+#endif
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	DSI_CMD_SET_MI_READ_LOCKDOWN_INFO,
+#endif
 	DSI_CMD_SET_MAX
 };
 
@@ -509,6 +515,9 @@ struct dsi_host_common_cfg {
 	u32 byte_intf_clk_div;
 	u32 dma_sched_line;
 	u32 dma_sched_window;
+#if defined(CONFIG_MACH_XIAOMI_SM8150)
+	bool cphy_strength;
+#endif
 };
 
 /**

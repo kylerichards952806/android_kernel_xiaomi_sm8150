@@ -22,6 +22,10 @@
 #include "sde_vm.h"
 #include <drm/drm_probe_helper.h>
 
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+#include "dsi_panel.h"
+#endif
+
 #define BL_NODE_NAME_SIZE 32
 #define HDR10_PLUS_VSIF_TYPE_CODE      0x81
 #define MAX_BRIGHTNESS_LEVEL 255
@@ -1021,7 +1025,9 @@ void sde_connector_helper_bridge_enable(struct drm_connector *connector)
 
 	c_conn = to_sde_connector(connector);
 
+#if !defined(CONFIG_MACH_XIAOMI_SM8150)
 	if (c_conn->connector_type == DRM_MODE_CONNECTOR_DSI) {
+#endif
 		display = (struct dsi_display *) c_conn->display;
 
 		/*
@@ -1035,16 +1041,26 @@ void sde_connector_helper_bridge_enable(struct drm_connector *connector)
 					BL_UPDATE_DELAY_UNTIL_FIRST_FRAME)
 			sde_encoder_wait_for_event(c_conn->encoder,
 					MSM_ENC_TX_COMPLETE);
+#if !defined(CONFIG_MACH_XIAOMI_SM8150)
 	}
+#endif
 
 	c_conn->allow_bl_update = true;
 
+
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	if (!sde_in_trusted_vm(sde_kms)  && !display->is_first_boot && c_conn->bl_device) {
+#else
 	if (!sde_in_trusted_vm(sde_kms) && c_conn->bl_device) {
+#endif
 		c_conn->bl_device->props.power = FB_BLANK_UNBLANK;
 		c_conn->bl_device->props.state &= ~BL_CORE_FBBLANK;
 		backlight_update_status(c_conn->bl_device);
 	}
 	c_conn->panel_dead = false;
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	display->is_first_boot = false;
+#endif
 }
 
 int sde_connector_clk_ctrl(struct drm_connector *connector, bool enable)
@@ -2465,10 +2481,65 @@ static int sde_connector_atomic_check(struct drm_connector *connector,
 	return 0;
 }
 
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+static irqreturn_t esd_err_irq_handle(int irq, void *data)
+{
+	struct sde_connector *c_conn = data;
+	struct drm_event event;
+	bool panel_on = false;
+	struct dsi_display *display;
+
+	if (!c_conn && !c_conn->display) {
+		return IRQ_HANDLED;
+	}
+
+	display = c_conn->display;
+
+	if (!display || !display->panel) {
+		SDE_ERROR("invalid display/panel\n");
+		return IRQ_HANDLED;
+	}
+
+	if (gpio_get_value(display->panel->esd_config.esd_err_irq_gpio) && display->panel->cphy_esd_check) {
+		SDE_ERROR("trigger esd by mistake,return\n");
+		return IRQ_HANDLED;
+	}
+
+	if (c_conn->connector_type == DRM_MODE_CONNECTOR_DSI) {
+		struct dsi_display * dsi_display = (struct dsi_display *)(c_conn->display);
+		if (dsi_display && dsi_display->panel) {
+			panel_on = dsi_display->panel->panel_initialized;
+		}
+
+		if (atomic_read(&(display->panel->esd_recovery_pending))) {
+			SDE_ERROR("ESD recovery already pending\n");
+			return IRQ_HANDLED;
+		}
+
+		if (panel_on && (c_conn->panel_dead == false)) {
+			atomic_set(&display->panel->esd_recovery_pending, 1);
+		}
+	}
+
+	if (panel_on && (c_conn->panel_dead == false)) {
+		c_conn->panel_dead = true;
+		event.type = DRM_EVENT_PANEL_DEAD;
+		event.length = sizeof(bool);
+		msm_mode_object_event_notify(&c_conn->base.base,
+			c_conn->base.dev, &event, (u8 *)&c_conn->panel_dead);
+		sde_encoder_display_failure_notification(c_conn->encoder,false);
+	}
+	return IRQ_HANDLED;
+}
+#endif
+
 static void _sde_connector_report_panel_dead(struct sde_connector *conn,
 	bool skip_pre_kickoff)
 {
 	struct drm_event event;
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	struct dsi_display *display = (struct dsi_display *)(conn->display);
+#endif
 
 	if (!conn)
 		return;
@@ -2486,6 +2557,9 @@ static void _sde_connector_report_panel_dead(struct sde_connector *conn,
 		skip_pre_kickoff);
 
 	conn->panel_dead = true;
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	display->panel->panel_dead_flag = true;
+#endif
 	event.type = DRM_EVENT_PANEL_DEAD;
 	event.length = sizeof(bool);
 	msm_mode_object_event_notify(&conn->base.base,
@@ -2801,6 +2875,21 @@ static int _sde_connector_install_properties(struct drm_device *dev,
 						dev->mode_config.max_width,
 						dev->mode_config.max_height);
 		mutex_unlock(&c_conn->base.dev->mode_config.mutex);
+
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+		/* register esd irq and enable it after panel enabled */
+		if (dsi_display && dsi_display->panel &&
+			dsi_display->panel->esd_config.esd_err_irq_gpio > 0) {
+			rc = request_threaded_irq(dsi_display->panel->esd_config.esd_err_irq,
+							NULL, esd_err_irq_handle,
+							dsi_display->panel->esd_config.esd_err_irq_flags,
+							"esd_err_irq", c_conn);
+			if (rc < 0) {
+				pr_err("%s: request irq %d failed\n", __func__, dsi_display->panel->esd_config.esd_err_irq);
+					dsi_display->panel->esd_config.esd_err_irq = 0;
+			}
+		}
+#endif
 	}
 
 	msm_property_install_volatile_range(

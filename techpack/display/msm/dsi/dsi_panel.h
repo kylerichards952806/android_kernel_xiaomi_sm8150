@@ -37,6 +37,11 @@
 #define MIPI_DSI_MSG_ASYNC_OVERRIDE BIT(4)
 #define MIPI_DSI_MSG_CMD_DMA_SCHED BIT(5)
 
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+#define BUF_LEN_MAX    256
+#define MAX_READ_LOCKDOWN_COUNT 200
+#endif
+
 enum dsi_panel_rotation {
 	DSI_PANEL_ROTATE_NONE = 0,
 	DSI_PANEL_ROTATE_HV_FLIP,
@@ -127,6 +132,9 @@ struct dsi_backlight_config {
 	bool bl_inverted_dbv;
 
 	int en_gpio;
+#if defined(CONFIG_MACH_XIAOMI_SM8150)
+	bool dcs_type_ss;
+#endif
 	/* PWM params */
 	struct pwm_device *pwm_bl;
 	bool pwm_enabled;
@@ -175,6 +183,11 @@ struct drm_panel_esd_config {
 	u8 *return_buf;
 	u8 *status_buf;
 	u32 groups;
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	int esd_err_irq_gpio;
+	int esd_err_irq;
+	int esd_err_irq_flags;
+#endif
 };
 
 struct dsi_panel_spr_info {
@@ -201,6 +214,21 @@ struct dsi_panel_ops {
 	int (*parse_gpios)(struct dsi_panel *panel);
 	int (*parse_power_cfg)(struct dsi_panel *panel);
 };
+
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+struct lockdowninfo_cfg {
+	u8 lockdowninfo[16];
+	bool lockdowninfo_read_done;
+};
+
+struct dsi_read_config {
+	bool enabled;
+	struct dsi_panel_cmd_set read_cmd;
+	u32 cmds_rlen;
+	u32 valid_bits;
+	u8 rbuf[BUF_LEN_MAX];
+};
+#endif
 
 struct dsi_panel {
 	const char *name;
@@ -267,6 +295,17 @@ struct dsi_panel {
 	u32 tlmm_gpio_count;
 
 	struct dsi_panel_ops panel_ops;
+#if defined(CONFIG_MACH_XIAOMI_SM8150)
+	bool cphy_esd_check;
+	struct delayed_work esd_work;
+#endif
+
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	bool is_tddi_flag;
+	bool tddi_doubleclick_flag;
+	bool panel_dead_flag;
+	struct lockdowninfo_cfg lockdowninfo_read;
+#endif
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
@@ -402,4 +441,18 @@ int dsi_panel_create_cmd_packets(const char *data, u32 length, u32 count,
 void dsi_panel_destroy_cmd_packets(struct dsi_panel_cmd_set *set);
 
 void dsi_panel_dealloc_cmd_packets(struct dsi_panel_cmd_set *set);
+
+#if defined(CONFIG_MACH_XIAOMI_SM8150)
+int dsi_panel_set_esd_check(struct dsi_panel *panel);
+#endif
+
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+int dsi_panel_esd_irq_ctrl(struct dsi_panel *panel, bool enable);
+ssize_t dsi_panel_lockdown_info_read(unsigned char *plockdowninfo);
+int dsi_panel_write_cmd_set(struct dsi_panel *panel, struct dsi_panel_cmd_set *cmd_sets);
+int dsi_panel_read_cmd_set(struct dsi_panel *panel, struct dsi_read_config *read_config);
+void dsi_panel_doubleclick_enable(bool on);
+int dsi_panel_lockdowninfo_param_read(struct dsi_panel *panel);
+#endif
+
 #endif /* _DSI_PANEL_H_ */
