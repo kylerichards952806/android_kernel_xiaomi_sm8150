@@ -44,7 +44,17 @@ enum backlight_type {
 enum backlight_notification {
 	BACKLIGHT_REGISTERED,
 	BACKLIGHT_UNREGISTERED,
+#if defined(CONFIG_MACH_XIAOMI_SM8150)
+	BACKLIGHT_UPDATED,
+#endif
 };
+
+#if defined(CONFIG_MACH_XIAOMI_SM8150)
+enum backlight_brightness {
+	BACKLIGHT_OFF,
+	BACKLIGHT_ON,
+};
+#endif
 
 enum backlight_scale {
 	BACKLIGHT_SCALE_UNKNOWN = 0,
