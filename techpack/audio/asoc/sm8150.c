@@ -604,7 +604,9 @@ static struct msm_asoc_wcd93xx_codec msm_codec_fn;
 static void *def_wcd_mbhc_cal(void);
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_component *component,
 					int enable, bool dapm);
+#if !defined(CONFIG_MACH_XIAOMI_SM8150)
 static int msm_wsa881x_init(struct snd_soc_pcm_runtime *rtd);
+#endif
 
 /*
  * Need to report LINEIN
@@ -618,9 +620,15 @@ static struct wcd_mbhc_config wcd_mbhc_cfg = {
 	.swap_gnd_mic = NULL,
 	.hs_ext_micbias = true,
 	.key_code[0] = KEY_MEDIA,
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	.key_code[1] = BTN_1,
+	.key_code[2] = BTN_2,
+	.key_code[3] = 0,
+#else
 	.key_code[1] = KEY_VOICECOMMAND,
 	.key_code[2] = KEY_VOLUMEUP,
 	.key_code[3] = KEY_VOLUMEDOWN,
+#endif
 	.key_code[4] = 0,
 	.key_code[5] = 0,
 	.key_code[6] = 0,
@@ -3376,6 +3384,9 @@ static const struct snd_soc_dapm_widget msm_dapm_widgets_tavil[] = {
 	SND_SOC_DAPM_MIC("Digital Mic3", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic4", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic5", NULL),
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	SND_SOC_DAPM_MIC("Headset Mic2", NULL),
+#endif
 };
 
 /* set audio task affinity to core 1 & 2 */
@@ -4212,6 +4223,16 @@ static void *def_wcd_mbhc_cal(void)
 	btn_high = ((void *)&btn_cfg->_v_btn_low) +
 		(sizeof(btn_cfg->_v_btn_low[0]) * btn_cfg->num_btn);
 
+#if defined(CONFIG_MACH_XIAOMI_SM8150)
+	btn_high[0] = 75;
+	btn_high[1] = 260;
+	btn_high[2] = 750;
+	btn_high[3] = 750;
+	btn_high[4] = 750;
+	btn_high[5] = 750;
+	btn_high[6] = 750;
+	btn_high[7] = 750;
+#else
 	btn_high[0] = 75;
 	btn_high[1] = 150;
 	btn_high[2] = 237;
@@ -4220,6 +4241,7 @@ static void *def_wcd_mbhc_cal(void)
 	btn_high[5] = 500;
 	btn_high[6] = 500;
 	btn_high[7] = 500;
+#endif
 
 	return wcd_mbhc_cal;
 }
@@ -4974,6 +4996,13 @@ static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 			__func__, index, ret);
 		goto clk_off;
 	}
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	snd_soc_component_set_sysclk(rtd->codec_dai->component, 0, 0,
+			mi2s_clk[index].clk_freq_in_hz,
+			SND_SOC_CLOCK_IN);
+#endif
+
 clk_off:
 	if (ret < 0)
 		msm_mi2s_set_sclk(substream, false);
@@ -5601,30 +5630,7 @@ static struct snd_soc_dai_link msm_common_misc_fe_dai_links[] = {
 		.id = MSM_FRONTEND_DAI_MULTIMEDIA17,
 		SND_SOC_DAILINK_REG(multimedia17),
 	},
-	{
-		.name = "MultiMedia30 Playback",
-		.stream_name = "MultiMedia30",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			    SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-		.id = MSM_FRONTEND_DAI_MULTIMEDIA30,
-		SND_SOC_DAILINK_REG(multimedia30),
-	},
-	{
-		.name = "MultiMedia31 Playback",
-		.stream_name = "MultiMedia31",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			    SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-		.id = MSM_FRONTEND_DAI_MULTIMEDIA31,
-		SND_SOC_DAILINK_REG(multimedia31),
-	},
+#ifdef CONFIG_MACH_XIAOMI_SM8150
 	{
 		.name = "Quaternary MI2S_RX Hostless Playback",
 		.stream_name = "Quaternary MI2S_RX Hostless Playback",
@@ -5649,6 +5655,57 @@ static struct snd_soc_dai_link msm_common_misc_fe_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		SND_SOC_DAILINK_REG(quat_mi2s_tx_hostless_cp),
 	},
+#endif
+	{
+		.name = "MultiMedia30 Playback",
+		.stream_name = "MultiMedia30",
+		.dynamic = 1,
+		.dpcm_playback = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			    SND_SOC_DPCM_TRIGGER_POST},
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.id = MSM_FRONTEND_DAI_MULTIMEDIA30,
+		SND_SOC_DAILINK_REG(multimedia30),
+	},
+	{
+		.name = "MultiMedia31 Playback",
+		.stream_name = "MultiMedia31",
+		.dynamic = 1,
+		.dpcm_playback = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			    SND_SOC_DPCM_TRIGGER_POST},
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.id = MSM_FRONTEND_DAI_MULTIMEDIA31,
+		SND_SOC_DAILINK_REG(multimedia31),
+	},
+#ifndef CONFIG_MACH_XIAOMI_SM8150
+	{
+		.name = "Quaternary MI2S_RX Hostless Playback",
+		.stream_name = "Quaternary MI2S_RX Hostless Playback",
+		.dynamic = 1,
+		.dpcm_playback = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			    SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		SND_SOC_DAILINK_REG(quat_mi2s_rx_hostless_pb),
+	},
+	{
+		.name = "Quaternary MI2S_TX Hostless Capture",
+		.stream_name = "Quaternary MI2S_TX Hostless Capture",
+		.dynamic = 1,
+		.dpcm_capture = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		SND_SOC_DAILINK_REG(quat_mi2s_tx_hostless_cp),
+	},
+#endif
 	/* Voice Stub */
 	{
 		.name = "Voice Stub",
@@ -5917,7 +5974,16 @@ static struct snd_soc_dai_link msm_tavil_be_dai_links[] = {
 		.no_pcm = 1,
 		.dpcm_capture = 1,
 		.id = MSM_BACKEND_DAI_SLIMBUS_0_TX,
+<<<<<<< HEAD
+=======
+		/* Many devices dont have wsa881x so
+		 * use ifdef to compile it out
+		 * otherwise driver stays in -EPROBE_DEFER
+		 */
+#if !defined(CONFIG_MACH_XIAOMI_SM8150)
+>>>>>>> 29ae43c009cc (techpack: audio: Import vayu changes)
 		.init = msm_wsa881x_init,
+#endif
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ignore_suspend = 1,
 		.ops = &msm_be_ops,
@@ -6810,6 +6876,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	return card;
 }
 
+#if !defined(CONFIG_MACH_XIAOMI_SM8150)
 static int msm_wsa881x_init(struct snd_soc_pcm_runtime *rtd)
 {
 	u8 spkleft_ports[WSA881X_MAX_SWR_PORTS] = {100, 101, 102, 106};
@@ -6878,6 +6945,7 @@ static int msm_wsa881x_init(struct snd_soc_pcm_runtime *rtd)
 
 	return 0;
 }
+#endif
 
 static void msm_i2s_auxpcm_init(struct platform_device *pdev)
 {

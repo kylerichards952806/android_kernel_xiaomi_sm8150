@@ -1194,6 +1194,9 @@ static int wdsp_mgr_parse_dt_entries(struct wdsp_mgr_priv *wdsp)
 			 "qcom,img-filename", ret);
 		return ret;
 	}
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	wdsp->img_fname  = "cpe_intl";
+#endif
 
 	ret = of_count_phandle_with_args(dev->of_node,
 					 "qcom,wdsp-components",
