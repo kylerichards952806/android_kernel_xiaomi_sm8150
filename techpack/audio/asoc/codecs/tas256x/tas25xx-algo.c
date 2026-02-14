@@ -74,7 +74,7 @@ static int get_calibrated_re_tcalib(uint32_t *rdc_fix, uint32_t *tv_fix,
 
 	if ((s_rdc_fix[0] == POISON_VAL) && (s_rdc_fix[1] == POISON_VAL)) {
 		fs = get_fs();
-		set_fs(get_ds());
+		set_fs(KERNEL_DS);
 #if USE_VFS
 		file = filp_open(filepath, O_RDONLY, 0);
 		if (!IS_ERR(file)) {
