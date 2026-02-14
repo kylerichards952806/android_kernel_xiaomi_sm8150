@@ -104,6 +104,9 @@
 			"wsa-codec.1", "wsa-codec.2",
 			"wsa-codec.3", "wsa-codec.4",
 			"msm-ext-disp-audio-codec-rx";
+	
+	qcom,msm_audio_ssr_devs = <&audio_apr>, <&q6core>;
+
 	qcom,wsa-max-devs = <2>;
 };
 
