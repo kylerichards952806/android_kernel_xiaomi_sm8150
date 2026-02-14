@@ -46,9 +46,6 @@
 #define CHANNEL0 1
 #define CHANNEL1 2
 
-#define TRUE 1
-#define FALSE 0
-
 #define TAS_SA_GET_F0 3810
 #define TAS_SA_GET_Q 3811
 #define TAS_SA_GET_TV 3812
