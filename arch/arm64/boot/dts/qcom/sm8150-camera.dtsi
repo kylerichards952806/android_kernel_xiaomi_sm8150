@@ -9,6 +9,11 @@
 		status = "ok";
 	};
 
+	qcom,cam-sync {
+		compatible = "qcom,cam-sync";
+		status = "ok";
+	};
+
 	cam_csiphy0: qcom,csiphy@ac65000 {
 		cell-index = <0>;
 		compatible = "qcom,csiphy-v1.1", "qcom,csiphy";
@@ -120,7 +125,7 @@
 
 	cam_cci0: qcom,cci@ac4a000 {
 		cell-index = <0>;
-		compatible = "qcom,cci";
+		compatible = "qcom,cci", "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <0xac4a000 0x1000>;
@@ -215,7 +220,7 @@
 
 	cam_cci1: qcom,cci@ac4b000 {
 		cell-index = <1>;
-		compatible = "qcom,cci";
+		compatible = "qcom,cci", "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <0xac4b000 0x1000>;
@@ -309,7 +314,7 @@
 	};
 
 	cam_smmu: qcom,cam_smmu {
-		compatible = "qcom,msm-cam-smmu";
+		compatible = "qcom,msm-cam-smmu", "simple-bus";
 		status = "ok";
 
 		msm_cam_smmu_ife {
@@ -536,8 +541,9 @@
 
 		interconnects =<&gem_noc MASTER_APPSS_PROC
 			&config_noc SLAVE_CAMERA_CFG>;
-		cam-ahb-num-cases = <7>;
-		cam-ahb-bw-KBps =
+		interconnect-names = "cam_ahb";
+		bus-num-cases = <7>;
+		bus-bw-KBps =
 			<0 0>, <0 76800>, <0 76800>, <0 150000>, <0 150000>,
 			<0 300000>, <0 300000>;
 
@@ -578,12 +584,18 @@
 				qcom,axi-port-name = "cam_hf_1";
 				ib-bw-voting-needed;
 				qcom,axi-port-mnoc {
+					bus-dyn-vote;
+					bus-num-cases = <1>;
+					bus-bw-KBps = <0 0>;
 					interconnect-names = "cam_hf_1_mnoc";
 					interconnects =
 						<&mmss_noc MASTER_CAMNOC_HF0
 						&mc_virt SLAVE_EBI1>;
 				};
 				qcom,axi-port-camnoc {
+					bus-dyn-vote;
+					bus-num-cases = <1>;
+					bus-bw-KBps = <0 0>;
 					interconnect-names = "cam_hf_1_camnoc";
 					interconnects =
 						<&camnoc_virt MASTER_CAMNOC_HF0_UNCOMP
@@ -594,12 +606,18 @@
 				qcom,axi-port-name = "cam_hf_2";
 				ib-bw-voting-needed;
 				qcom,axi-port-mnoc {
+					bus-dyn-vote;
+					bus-num-cases = <1>;
+					bus-bw-KBps = <0 0>;
 					interconnect-names = "cam_hf_2_mnoc";
 					interconnects =
 						<&mmss_noc MASTER_CAMNOC_HF1
 							&mc_virt SLAVE_EBI1>;
 				};
 				qcom,axi-port-camnoc {
+					bus-dyn-vote;
+					bus-num-cases = <1>;
+					bus-bw-KBps = <0 0>;
 					interconnect-names = "cam_hf_2_camnoc";
 					interconnects =
 						<&camnoc_virt MASTER_CAMNOC_HF1_UNCOMP
@@ -609,12 +627,18 @@
 			qcom,axi-port3 {
 				qcom,axi-port-name = "cam_sf_1";
 				qcom,axi-port-mnoc {
+					bus-dyn-vote;
+					bus-num-cases = <1>;
+					bus-bw-KBps = <0 0>;
 					interconnect-names = "cam_sf_1_mnoc";
 					interconnects =
 						<&mmss_noc MASTER_CAMNOC_SF
 							&mc_virt SLAVE_EBI1>;
 				};
 				qcom,axi-port-camnoc {
+					bus-dyn-vote;
+					bus-num-cases = <1>;
+					bus-bw-KBps = <0 0>;
 					interconnect-names = "cam_sf_1_camnoc";
 					interconnects =
 						<&camnoc_virt MASTER_CAMNOC_SF_UNCOMP
