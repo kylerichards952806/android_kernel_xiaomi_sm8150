@@ -487,6 +487,7 @@
 		pll-label = "dsi_pll_7nm";
 		qcom,dsi-pll-ssc-en;
 		qcom,dsi-pll-ssc-mode = "down-spread";
+		memory-region = <&dfps_data_memory>;
 		vdda-0p9-supply = <&pm8150_l5>;
 		qcom,platform-strength-ctrl = [55 03
 						55 03

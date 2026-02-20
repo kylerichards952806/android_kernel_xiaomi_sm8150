@@ -598,6 +598,11 @@
 		label = "disp_rdump_region";
 	};
 
+	dfps_data_memory: dfps_data_memory {
+		reg = <0x0 0xe3300000 0x0 0x0100000>;
+		label = "dfps_data_memory";
+	};
+
 	adsp_mem: adsp_region {
 		compatible = "shared-dma-pool";
 		alloc-ranges = <0x0 0x00000000 0x0 0xffffffff>;
