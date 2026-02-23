@@ -1,6 +1,7 @@
 /*
  * usb_pd_policy_manager.h
  *
+ *  Copyright (c) 2025 Aman, duckyduckg65@gmail.com
  *  Created on: Mar 27, 2017
  *      Author: a0220433
  */
@@ -13,7 +14,11 @@
 #include <linux/delay.h>
 #include <linux/workqueue.h>
 #include <linux/power_supply.h>
+#include <linux/qti_power_supply.h>
 #include <linux/usb/usbpd.h>
+
+#include <linux/iio/consumer.h>
+#include "bq2597x_charger_iio.h"
 
 enum pm_state {
 	PD_PM_STATE_ENTRY,
@@ -154,7 +159,8 @@ struct cp_device {
 	int die_temp;
 };
 
-#define PM_STATE_LOG_MAX 32
+#define LEGACY_BMS 0
+#define PM_STATE_LOG_MAX 32 //why is this here?
 struct usbpd_pm {
 	struct device *dev;
 
@@ -196,7 +202,6 @@ struct usbpd_pm {
 	struct power_supply *cp_sec_psy;
 	struct power_supply *sw_psy;
 	struct power_supply *usb_psy;
-	struct power_supply *bms_psy;
 
 	/* dtsi properties */
 	int bat_volt_max;
@@ -209,6 +214,9 @@ struct usbpd_pm {
 	/* jeita or thermal related */
 	bool jeita_triggered;
 	bool is_temp_out_fc2_range;
+
+	/* IIO channels */
+	struct iio_channel	**ext_main_iio_channels;
 };
 
 struct pdpm_config {

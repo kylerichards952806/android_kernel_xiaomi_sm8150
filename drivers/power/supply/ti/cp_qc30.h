@@ -1,12 +1,15 @@
 /*
  * cp_qc30.h
  *
+ *  Copyright (c) 2025 Aman, duckyduckg65@gmail.com
  */
 
 #ifndef SRC_PDLIB_USB_PD_POLICY_MANAGER_H_
 #define SRC_PDLIB_USB_PD_POLICY_MANAGER_H_
 #include <linux/module.h>
 #include <linux/delay.h>
+#include <linux/power_supply.h>
+#include <linux/qti_power_supply.h>
 #include <linux/workqueue.h>
 
 typedef enum {
@@ -216,10 +219,9 @@ typedef struct {
 	struct sw_charger sw_chager;
 	struct votable *fcc_votable;
 
-	struct power_supply *fc_psy;
 	struct power_supply *sw_psy;
 	struct power_supply *usb_psy;
-	struct power_supply *bms_psy;
+
 	/* jeita or thermal related */
 	bool jeita_triggered;
 	bool batt_cell_volt_triggered;
