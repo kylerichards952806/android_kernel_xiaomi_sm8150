@@ -138,6 +138,11 @@ do {                                                    \
 #define WCD_MBHC_JACK_BUTTON_MASK (SND_JACK_BTN_0 | SND_JACK_BTN_1 | \
 				  SND_JACK_BTN_2 | SND_JACK_BTN_3 | \
 				  SND_JACK_BTN_4 | SND_JACK_BTN_5)
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+#define WCD_MBHC_JACK_USB_3_5_MASK (SND_JACK_UNSUPPORTED | SND_JACK_HEADSET)
+#endif
+
 #define OCP_ATTEMPT 20
 #define HS_DETECT_PLUG_TIME_MS (3 * 1000)
 #define SPECIAL_HS_DETECT_TIME_MS (2 * 1000)
@@ -440,8 +445,18 @@ static const char * const wcd_mbhc_ext_iio_channel_map[] = {
 struct usbc_ana_audio_config {
 	int usbc_en1_gpio;
 	int usbc_force_gpio;
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	int euro_us_hw_switch_gpio;
+	int uart_audio_switch_gpio;
+	int subpcb_id_gpio;
+#endif
 	struct device_node *usbc_en1_gpio_p;
 	struct device_node *usbc_force_gpio_p;
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	struct device_node *euro_us_hw_switch_gpio_p; /* used by pinctrl API */
+	struct device_node *uart_audio_switch_gpio_p; /* used by pinctrl API */
+	struct device_node *subpcb_id_gpio_p; /* used by pinctrl API */
+#endif
 };
 
 struct wcd_mbhc_config {
@@ -464,6 +479,12 @@ struct wcd_mbhc_config {
 	/* Non-FSA4480 analog audio */
 	bool enable_usbc_analog_legacy;
 	struct usbc_ana_audio_config usbc_analog_cfg;
+
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	u32 use_fsa4476_gpio;
+	void (*enable_dual_adc_gpio)(struct device_node *node, bool en);
+	struct device_node *dual_adc_gpio_node;
+#endif
 };
 
 struct wcd_mbhc_intr {
@@ -625,6 +646,9 @@ struct wcd_mbhc {
 
 	struct snd_soc_jack headset_jack;
 	struct snd_soc_jack button_jack;
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	struct snd_soc_jack usb_3_5_jack;
+#endif
 	struct mutex codec_resource_lock;
 
 	/* Holds codec specific interrupt mapping */

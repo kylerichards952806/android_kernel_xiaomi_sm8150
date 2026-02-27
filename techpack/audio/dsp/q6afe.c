@@ -6511,6 +6511,7 @@ static int __afe_port_start(u16 port_id, union afe_port_config *afe_config,
 		goto fail_cmd;
 	}
 	ret = afe_send_cmd_port_start(port_id);
+
 #ifdef CONFIG_MSM_CSPL
 	if (ret == 0)
 		crus_afe_port_start(port_id);

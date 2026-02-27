@@ -26,8 +26,11 @@
 #include <dsp/voice_mhi.h>
 #include <soc/qcom/secure_buffer.h>
 
+#if defined(CONFIG_MACH_XIAOMI_VAYU)
 #define TIMEOUT_MS 1000
-
+#else
+#define TIMEOUT_MS 1000
+#endif
 
 #define CMD_STATUS_SUCCESS 0
 #define CMD_STATUS_FAIL 1
