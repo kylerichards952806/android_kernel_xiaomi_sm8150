@@ -27,3 +27,12 @@
 	compatible = "qcom,sm8150-cdp", "qcom,sm8150", "qcom,cdp";
 	qcom,board-id = <40 0>;
 };
+
+&snd_934x {
+	io-channels =
+		<&pm8150b_charger PSY_IIO_TYPEC_POWER_ROLE>,
+		<&pm8150b_charger PSY_IIO_TYPEC_MODE>;
+	io-channel-names =
+		"typec_power_role",
+		"typec_mode";
+};
