@@ -370,6 +370,9 @@ struct cam_sensor_acquire_dev {
 	__u32       handle_type;
 	__u32       reserved;
 	__u64       info_handle;
+	/* mi8150 change start*/
+	__u32    operation_mode;
+	/* mi8150 change end*/
 } __attribute__((packed));
 
 /**

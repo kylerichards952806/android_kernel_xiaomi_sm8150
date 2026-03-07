@@ -29,7 +29,10 @@
 #define CAM_ISP_IFE_OUT_RES_2PD                (CAM_ISP_IFE_OUT_RES_BASE + 22)
 #define CAM_ISP_IFE_OUT_RES_RDI_RD             (CAM_ISP_IFE_OUT_RES_BASE + 23)
 
-#define CAM_ISP_IFE_OUT_RES_MAX                (CAM_ISP_IFE_OUT_RES_BASE + 24)
+/* mi8150 change start*/
+#define CAM_ISP_IFE_OUT_RES_LCR                (CAM_ISP_IFE_OUT_RES_BASE + 24)
+#define CAM_ISP_IFE_OUT_RES_MAX                (CAM_ISP_IFE_OUT_RES_BASE + 25) /* orig: 24 */
+/* mi8150 change end*/
 
 
 /* IFE input port resource type (global unique) */

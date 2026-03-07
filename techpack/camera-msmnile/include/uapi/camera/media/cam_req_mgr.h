@@ -35,7 +35,9 @@
  * Max handles supported by cam_req_mgr
  * It includes both session and device handles
  */
-#define CAM_REQ_MGR_MAX_HANDLES           64
+/* mi8150 change start*/
+#define CAM_REQ_MGR_MAX_HANDLES           128 /* orig: 64*/
+/* mi8150 change end*/
 #define CAM_REQ_MGR_MAX_HANDLES_V2        128
 #define MAX_LINKS_PER_SESSION             2
 
