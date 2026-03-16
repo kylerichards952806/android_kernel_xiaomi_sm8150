@@ -3057,7 +3057,7 @@
 		interconnect-names = "data_path";
 		interconnects = <&gem_noc MASTER_APPSS_PROC &config_noc SLAVE_PRNG>;
 		clocks = <&clock_gcc GCC_PRNG_AHB_CLK>;
-		clock-names = "iface_clk";
+		clock-names = "km_clk_src";
 	};
 
 	qcom_cedev: qcedev@1de0000 {
