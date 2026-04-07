@@ -81,6 +81,32 @@
 };
 
 &soc {
+	tsens0: tsens@c222000 {
+		compatible = "qcom,tsens24xx";
+		reg = <0xc222000 0x4>,
+			<0xc263000 0x1ff>;
+		reg-names = "tsens_srot_physical",
+				"tsens_tm_physical";
+		interrupts = <GIC_SPI 506 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 508 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "tsens-upper-lower", "tsens-critical";
+		tsens-reinit-wa;
+		#thermal-sensor-cells = <1>;
+	};
+
+	tsens1: tsens@c223000 {
+		compatible = "qcom,tsens24xx";
+		reg = <0xc223000 0x4>,
+			<0xc265000 0x1ff>;
+		reg-names = "tsens_srot_physical",
+			"tsens_tm_physical";
+		interrupts = <GIC_SPI 507 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 509 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "tsens-upper-lower", "tsens-critical";
+		tsens-reinit-wa;
+		#thermal-sensor-cells = <1>;
+	};
+
 	qmi-tmd-devices {
 		compatible = "qcom,qmi-cooling-devices";
 
