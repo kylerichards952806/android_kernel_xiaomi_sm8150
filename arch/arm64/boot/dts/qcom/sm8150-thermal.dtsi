@@ -18,8 +18,6 @@
 		qcom,affinity = <0>;
 		reg = <0x18358800 0x1000>,
 			<0x18323000 0x1000>;
-		qcom,no-cooling-device-register;
-		#thermal-sensor-cells = <0>;
 	};
 
 	lmh_dcvs1: qcom,limits-dcvs@1 {
@@ -32,8 +30,6 @@
 		isens-vref-0p8-settings = <880000 880000 20000>;
 		isens_vref_1p8-supply = <&pm8150_l12_ao>;
 		isens-vref-1p8-settings = <1800000 1800000 20000>;
-		qcom,no-cooling-device-register;
-		#thermal-sensor-cells = <0>;
 	};
 
 	qcom,cpu-isolation {
@@ -937,40 +933,6 @@
 				cooling-device =
 					<&CPU7 THERMAL_NO_LIMIT
 						(THERMAL_MAX_LIMIT-1)>;
-			};
-		};
-	};
-
-	lmh-dcvs-01 {
-		polling-delay-passive = <0>;
-		polling-delay = <0>;
-		thermal-governor = "user_space";
-		thermal-sensors = <&lmh_dcvs1>;
-		wake-capable-sensor;
-		disable-thermal-zone;
-
-		trips {
-			active-config {
-				temperature = <85000>;
-				hysteresis = <25000>;
-				type = "passive";
-			};
-		};
-	};
-
-	lmh-dcvs-00 {
-		polling-delay-passive = <0>;
-		polling-delay = <0>;
-		thermal-governor = "user_space";
-		thermal-sensors = <&lmh_dcvs0>;
-		wake-capable-sensor;
-		disable-thermal-zone;
-
-		trips {
-			active-config {
-				temperature = <85000>;
-				hysteresis = <25000>;
-				type = "passive";
 			};
 		};
 	};
