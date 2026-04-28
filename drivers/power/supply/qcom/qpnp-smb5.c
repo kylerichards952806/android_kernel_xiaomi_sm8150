@@ -1000,6 +1000,8 @@ static int smb5_parse_dt_currents(struct smb5 *chip, struct device_node *node)
 			"mi,fcc-batt-unverify-ua", &chip->dt.batt_unverify_fcc_ua);
 	if (rc < 0)
 		chip->dt.batt_unverify_fcc_ua = -EINVAL;
+
+	chip->dt.batt_unverify_fcc_ua = 5900000; /* temp change till maxim support is added */
 #endif
 
 	rc = of_property_read_u32(node,
