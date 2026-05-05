@@ -98,11 +98,6 @@
 		qcom,finger-detect-gpio = <&pm8150_gpios 1 0>;
 		status = "disabled";
 	};
-
-	wdog: qcom,wdt@17c10000 {
-		qcom,bark-time = <20000>;
-		qcom,pet-time = <15000>;
-	};
 };
 
 
