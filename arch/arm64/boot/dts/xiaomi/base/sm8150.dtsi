@@ -28,6 +28,15 @@
 		no-map;
 		reg = <0x0 0x85d00000 0x0 0x100000>;
 	};
+	ramoops: ramoops@B0000000 {
+		compatible = "ramoops";
+		reg = <0x0 0xB0000000 0x0 0x400000>; /* 4M */
+		console-size = <0x280000>; /* 2.8M */
+		ftrace-size  = <0x40000>; /* 256K */
+		pmsg-size    = <0x100000>; /* 1M */
+		record-size  = <0x40000>; /* 256K */
+		ecc-size     = <0x0>;
+	};
 };
 
 &pil_adsp_mem {
