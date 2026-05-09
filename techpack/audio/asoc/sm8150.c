@@ -5782,8 +5782,6 @@ static struct snd_soc_dai_link msm_tavil_fe_dai_links[] = {
 	{
 		.name = TFA_TX_HOSTLESS_CODEC_NAME,
 		.stream_name = TFA_TX_HOSTLESS_STREAM_NAME,
-		.cpu_dai_name = TFA_TX_HOSTLESS_CPU_DAI_NAME,
-		.platform_name	= "msm-pcm-hostless",
 		.dynamic = 1,
 		.dpcm_capture = 1,
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
@@ -5793,8 +5791,7 @@ static struct snd_soc_dai_link msm_tavil_fe_dai_links[] = {
 		/* this dailink has playback support */
 		.ignore_pmdown_time = 1,
 		/* This dainlink has MI2S support */
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
+		SND_SOC_DAILINK_REG(tfa_tx_hostless),
 	},
 #else
 	{
@@ -6567,10 +6564,6 @@ static struct snd_soc_dai_link quat_mi2s_rx_tfa9874_dai_links[] = {
 	{
 		.name = LPASS_BE_QUAT_MI2S_RX,
 		.stream_name = "Quaternary MI2S Playback",
-		.cpu_dai_name = "msm-dai-q6-mi2s.3",
-		.platform_name = "msm-pcm-routing",
-		.codec_name = "tfa98xx.1-0034",
-		.codec_dai_name = "tfa98xx-aif-1-34",
 		.dynamic_be = 1,
 		.no_pcm = 1,
 		.dpcm_playback = 1,
@@ -6579,6 +6572,7 @@ static struct snd_soc_dai_link quat_mi2s_rx_tfa9874_dai_links[] = {
 		.ops = &msm_mi2s_be_ops,
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
+		SND_SOC_DAILINK_REG(quat_mi2s_rx),
 	},
 };
 #endif
