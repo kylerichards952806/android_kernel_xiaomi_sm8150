@@ -1771,6 +1771,7 @@ static int goodix_touch_handler(struct goodix_ts_device *dev,
 
 	if (unlikely(touch_num > max_touch_num)) {
 		touch_num = -EINVAL;
+		r = -EINVAL;
 		goto exit_clean_sta;
 	} else if (unlikely(touch_num > 1)) {
 		r = goodix_i2c_read_trans(
