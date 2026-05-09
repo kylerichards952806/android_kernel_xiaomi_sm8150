@@ -4487,8 +4487,10 @@ static ssize_t select_pdo_store(struct device *dev,
 	mutex_lock(&pd->swap_lock);
 
 #if defined(CONFIG_MACH_XIAOMI_VAYU)
-	if (pd->verify_process)
+	if (pd->verify_process) {
+		ret = 0;
 		goto out;
+	}
 #endif
 
 	/* Only allowed if we are already in explicit sink contract */
@@ -5349,8 +5351,10 @@ int usbpd_select_pdo(struct usbpd *pd, int pdo, int uv, int ua)
 
 	mutex_lock(&pd->swap_lock);
 
-	if (pd->verify_process)
+	if (pd->verify_process) {
+		ret = 0;
 		goto out;
+	}
 
 	if (pd->current_pr != PR_SINK) {
 		ret = -ENOTSUPP;
