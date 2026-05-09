@@ -242,8 +242,15 @@ And public attribution of xiaomi platforms(like F1 and so and)
 };
 
 &smb1390_charger {
-	io-channels = <&pm8150b_vadc ADC5_AMUX_THM2_100K_PU>;
-	io-channel-names = "cp_die_temp";
+	io-channels = <&pm8150b_vadc ADC5_AMUX_THM2_100K_PU>,
+			<&pm8150b_charger PSY_IIO_SMB_EN_MODE>,
+			<&pm8150b_charger PSY_IIO_SMB_EN_REASON>,
+			<&pm8150b_charger PSY_IIO_USB_INPUT_CURRENT_SETTLED>;
+
+	io-channel-names = "cp_die_temp",
+			   "smb_en_mode",
+			   "smb_en_reason",
+			   "input_current_settled";
 	status = "ok";
 };
 
