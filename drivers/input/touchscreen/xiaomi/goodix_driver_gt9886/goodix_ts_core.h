@@ -44,9 +44,6 @@
 #include <linux/regulator/consumer.h>
 #endif
 #include <linux/power_supply.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-#endif
 #ifdef CONFIG_DRM
 #include <drm/drm_notifier.h>
 #include <linux/notifier.h>
@@ -462,8 +459,6 @@ struct goodix_ts_core {
 	struct proc_dir_entry *tp_lockdown_info_proc;
 #ifdef CONFIG_DRM
 	struct notifier_block fb_notifier;
-#elif defined(CONFIG_HAS_EARLYSUSPEND)
-	struct early_suspend early_suspend;
 #endif
 	struct notifier_block power_supply_notifier;
 	struct notifier_block bl_notifier;

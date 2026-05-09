@@ -1882,30 +1882,6 @@ int goodix_ts_fb_notifier_callback(struct notifier_block *self,
 }
 #endif
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-/**
- * goodix_ts_earlysuspend - Early suspend function
- * Called by kernel during system suspend phrase
- */
-static void goodix_ts_earlysuspend(struct early_suspend *h)
-{
-	struct goodix_ts_core *core_data =
-		container_of(h, struct goodix_ts_core, early_suspend);
-
-	goodix_ts_suspend(core_data);
-}
-/**
- * goodix_ts_lateresume - Late resume function
- * Called by kernel during system wakeup
- */
-static void goodix_ts_lateresume(struct early_suspend *h)
-{
-	struct goodix_ts_core *core_data =
-		container_of(h, struct goodix_ts_core, early_suspend);
-	goodix_ts_resume(core_data);
-}
-#endif
-
 #ifdef CONFIG_PM
 #ifdef CONFIG_DRM
 static void goodix_ts_resume_work(struct work_struct *work)
