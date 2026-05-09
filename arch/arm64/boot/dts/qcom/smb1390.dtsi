@@ -34,6 +34,7 @@ smb1390: qcom,smb1390@10 {
 		compatible = "qcom,smb1390-charger";
 		qcom,pmic-revid = <&smb1390_revid>;
 		interrupt-parent = <&smb1390>;
+		#io-channel-cells = <1>;
 		status = "disabled";
 
 		qcom,core {
