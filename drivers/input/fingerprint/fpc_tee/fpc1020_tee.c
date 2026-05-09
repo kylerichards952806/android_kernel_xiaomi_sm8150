@@ -67,7 +67,7 @@ struct vreg_config {
 	int ua_load;
 };
 
-static const struct vreg_config const vreg_conf[] = {
+static const struct vreg_config vreg_conf[] = {
 	{
 		"vdd_ana",
 		1800000UL,
@@ -548,7 +548,7 @@ static DEVICE_ATTR(fingerdown_wait, S_IWUSR, NULL, fingerdown_wait_set);
 static ssize_t vendor_update(struct device *dev, struct device_attribute *attr,
 			     const char *buf, size_t count)
 {
-	int rc;
+	int rc = 0;
 	return rc ? rc : count;
 }
 static DEVICE_ATTR(vendor, S_IWUSR, NULL, vendor_update);
