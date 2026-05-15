@@ -37,9 +37,6 @@ extern struct i2c_driver cam_eeprom_i2c_driver;
 extern struct i2c_driver cam_ois_i2c_driver;
 extern struct i2c_driver cam_flash_i2c_driver;
 #endif
-#ifdef CONFIG_HYP_INTF
-extern struct platform_driver cam_hyp_intf_driver;
-#endif
 #ifdef CONFIG_SPECTRA_ICP
 extern struct platform_driver cam_a5_driver;
 extern struct platform_driver cam_ipe_driver;
@@ -88,9 +85,6 @@ static struct platform_driver *const cam_component_platform_drivers[] = {
 	&cam_ois_platform_driver,
 	&cam_flash_platform_driver,
 	&cam_ir_led_platform_driver,
-#endif
-#ifdef CONFIG_HYP_INTF
-	&cam_hyp_intf_driver,
 #endif
 #ifdef CONFIG_SPECTRA_ICP
 	&cam_a5_driver,

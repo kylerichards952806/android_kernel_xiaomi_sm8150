@@ -74,9 +74,6 @@ camera-$(CONFIG_SPECTRA_ISP) += \
 	cam_isp/cam_isp_context.o \
 	cam_isp/cam_isp_dev.o
 
-camera-$(CONFIG_HYP_INTF) += \
-	cam_hyp_intf/cam_hyp_intf.o
-
 camera-$(CONFIG_SPECTRA_ICP) += \
 	cam_icp/icp_hw/a5_hw/a5_core.o \
 	cam_icp/icp_hw/a5_hw/a5_dev.o \

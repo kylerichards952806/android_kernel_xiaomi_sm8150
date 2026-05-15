@@ -49,8 +49,7 @@
 /* CAM_PERF: Used for performance (clock, BW etc) logs */
 #define CAM_PERF       (1 << 25)
 
-#define CAM_HYP        (1 << 26)
-#define CAM_IR_LED     (1 << 27)
+#define CAM_IR_LED     (1 << 26)
 #define STR_BUFFER_MAX_LENGTH  1024
 
 /*

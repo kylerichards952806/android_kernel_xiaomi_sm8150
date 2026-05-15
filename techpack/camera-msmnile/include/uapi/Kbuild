@@ -2,7 +2,6 @@
 
 header-y += camera/media/cam_cpas.h
 header-y += camera/media/cam_defs.h
-header-y += camera/media/cam_hyp_intf.h
 header-y += camera/media/cam_fd.h
 header-y += camera/media/cam_icp.h
 header-y += camera/media/cam_isp.h

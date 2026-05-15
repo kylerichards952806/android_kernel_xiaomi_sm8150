@@ -29,7 +29,6 @@
 #include "a5_core.h"
 #include "ipe_core.h"
 #include "bps_core.h"
-#include "cam_hyp_intf_def.h"
 #include "cam_icp_subdev.h"
 
 #include "jpeg_dma_core.h"
@@ -94,12 +93,6 @@ static const struct camera_submodule_component camera_sensor[] = {
 #endif
 };
 
-static const struct camera_submodule_component cam_hyp_intf[] = {
-#ifdef CONFIG_HYP_INTF
-	{&cam_hyp_intf_init_module, &cam_hyp_intf_exit_module},
-#endif
-};
-
 static const struct camera_submodule_component camera_icp[] = {
 #ifdef CONFIG_SPECTRA_ICP
 	{&cam_a5_init_module, &cam_a5_exit_module},
@@ -146,11 +139,6 @@ static const struct camera_submodule submodule_table[] = {
 		.name = "Camera SENSOR",
 		.num_component = ARRAY_SIZE(camera_sensor),
 		.component = camera_sensor
-	},
-	{
-		.name = "Camera HYP INTF"
-		.num_component = ARRAY_SIZE(cam_hyp_intf)
-		.component = cam_hyp_intf,
 	},
 	{
 		.name = "Camera ICP",
