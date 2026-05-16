@@ -304,6 +304,14 @@
 			qcom,auto-calibration;
 			status = "disabled";
 
+			io-channels = <&pm8150b_fg PSY_IIO_RESISTANCE>,
+					<&pm8150b_fg PSY_IIO_VOLTAGE_OCV>,
+					<&pm8150b_fg PSY_IIO_CURRENT_NOW>;
+
+			io-channel-names = "rbatt",
+					"voltage_ocv",
+					"current_now";
+
 			wled_flash: qcom,wled-flash {
 				label = "flash";
 				qcom,default-led-trigger = "wled_flash";
