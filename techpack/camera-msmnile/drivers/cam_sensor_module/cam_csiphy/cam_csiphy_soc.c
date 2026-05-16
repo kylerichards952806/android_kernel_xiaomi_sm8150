@@ -14,7 +14,7 @@
 #include "cam_csiphy_core.h"
 #ifdef CONFIG_MACH_XIAOMI_VAYU
 #include "include/cam_csiphy_1_1_hwreg_vayu.h"
-#elif
+#elif CONFIG_MACH_XIAOMI_SM8150
 #include "include/cam_csiphy_1_1_hwreg_mi8150.h"
 #else
 #include "include/cam_csiphy_1_1_hwreg.h"
