@@ -143,6 +143,8 @@ static const char * const step_chg_ext_iio_chan[] = {
 #ifdef CONFIG_MACH_XIAOMI_SM8150
 	[STEP_QG_CYCLE_COUNT] = "cycle_count",
 	[STEP_QG_CONSTANT_CHARGE_VOLTAGE] =	"constant_charge_voltage",
+#endif
+#if defined(CONFIG_MACH_XIAOMI_VAYU)
 	[STEP_QG_FFC_TERMINATION_CURRENT] = "ffc_term_current",//qg
 #endif
 };

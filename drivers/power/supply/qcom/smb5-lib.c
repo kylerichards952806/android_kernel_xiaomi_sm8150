@@ -1145,8 +1145,8 @@ static const char * const smblib_qg_ext_iio_chan[] = {
 	[SMB5_QG_CYCLE_COUNT] = "cycle_count",
 	[SMB5_QG_CHARGE_FULL_DESIGN] = "charge_full_design",
 	[SMB5_QG_TIME_TO_FULL_NOW] = "time_to_full_now",
-#ifdef CONFIG_MACH_XIAOMI_SM8150
-	/* Xiaomi SM8150 */
+#ifdef CONFIG_MACH_XIAOMI_VAYU
+	/* vayu SM8150 */
 	[SMB5_QG_FASTCHARGE_MODE] = "fastcharge_mode", //qg
 	[SMB5_QG_SYS_TERMINATION_CURRENT] = "sys_term_current",//qg
 	[SMB5_QG_VBATT_FULL_VOL] = "vbatt_full_vol",//qg
