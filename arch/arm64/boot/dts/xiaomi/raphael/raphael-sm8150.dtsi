@@ -109,7 +109,8 @@ And public attribution of xiaomi platforms(like F1 and so and)
 					<&pm8150b_fg PSY_IIO_CHARGE_COUNTER>,
 					<&pm8150b_fg PSY_IIO_CYCLE_COUNT>,
 					<&pm8150b_fg PSY_IIO_CHARGE_FULL_DESIGN>,
-					<&pm8150b_fg PSY_IIO_TIME_TO_FULL_NOW>;
+					<&pm8150b_fg PSY_IIO_TIME_TO_FULL_NOW>,
+					<&pm8150b_fg PSY_IIO_CONSTANT_CHARGE_VOLTAGE>;
 
 			io-channel-names = "mid_voltage",
 					"usb_in_voltage",
@@ -134,7 +135,8 @@ And public attribution of xiaomi platforms(like F1 and so and)
 					"charge_counter",
 					"cycle_count",
 					"charge_full_design",
-					"time_to_full_now";
+					"time_to_full_now",
+					"constant_charge_voltage";
 
 	qcom,battery-data = <&mtp_batterydata>;
 	dpdm-supply = <&usb2_phy0>;
