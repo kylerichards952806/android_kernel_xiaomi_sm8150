@@ -47,9 +47,7 @@ jobs:
           # 1. Clean workspace
           make O=out ARCH=arm64 mrproper
           
-          make O=out ARCH=arm64 olddefconfig
-          
-          # 4. Final Compilation with Clang 21
+          # 4. Final Compilation with Clang 20
           make -j$(nproc --all) O=out \
               ARCH=arm64 \
               CC="ccache clang" \
