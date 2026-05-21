@@ -1,0 +1,88 @@
+name: Ultimate Kernel Build - Vayu Target Matrix
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [vayu]
+
+    steps:
+      - name: ⚡ Checkout Source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: 📦 Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y bc bison build-essential ccache clang curl flex g++-multilib \
+          gcc-multilib git gnupg gperf lz4 lib32ncurses-dev lib32z1-dev \
+          libelf-dev liblz4-tool libncurses-dev libsdl1.2-dev libssl-dev \
+          libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+      - name: 🔧 Install Clang 20
+        uses: KyleMayes/install-llvm-action@v2
+        with:
+          version: "20"
+          directory: ${{ runner.temp }}/llvm
+
+      - name: 📥 Prepare AnyKernel3
+        run: |
+          git clone -b b4s4 https://github.com/Oneloutre/AnyKernel3.git anykernel
+          rm -rf anykernel/.git
+      - name: 🛠️ Build Process (${{ matrix.target }})
+        run: |
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export PATH="${{ runner.temp }}/llvm/bin:$PATH"
+          export KBUILD_BUILD_HOST="HOME"
+          export KBUILD_BUILD_USER="Kyler084"
+          
+          # 1. Clean workspace
+          make O=out ARCH=arm64 mrproper
+          
+          # 2. Setup initial config
+          CONF_NAME=$(find arch/arm64/configs/ -name "*${{ matrix.target }}*_defconfig" -exec basename {} \; | head -n 1)
+          if [ -z "$CONF_NAME" ]; then CONF_NAME="gki_defconfig"; fi
+          make O=out ARCH=arm64 $CONF_NAME
+          QCOM_MAKEFILE="drivers/soc/qcom/Makefile"
+          if [ -f "$QCOM_MAKEFILE" ]; then
+            echo "Applying Force-Compile Patch to $QCOM_MAKEFILE"
+            sed -i 's/obj-$(CONFIG_QCOM_QMI_HELPERS)/obj-y/g' $QCOM_MAKEFILE
+          fi
+          {
+            echo "CONFIG_QRTR=y"
+            echo "CONFIG_QRTR_SMD=y"
+            echo "CONFIG_QCOM_QMI_HELPERS=y"
+            echo "CONFIG_MSM_QMI_INTERFACE=y"
+          } >> out/.config
+          
+          make O=out ARCH=arm64 olddefconfig
+          
+          # 4. Final Compilation with Clang 20
+          make -j$(nproc --all) O=out \
+              ARCH=arm64 \
+              CC="ccache clang" \
+              LLVM=1 \
+              LLVM_IAS=1 \
+              CLANG_TRIPLE=aarch64-linux-gnu- \
+              CROSS_COMPILE=aarch64-linux-gnu- \
+              CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+              KCFLAGS="-Wno-error -Wno-implicit-function-declaration -Wno-strict-prototypes -Wno-incompatible-pointer-types -Wno-implicit-int"
+      - name: 📦 Create Flashable Zip
+        run: |
+          ZIP_NAME="Kernel-${{ matrix.target }}-Kyler084-$(date +%Y%m%d).zip"
+          find out/arch/arm64/boot/ -name "Image*" -exec cp {} anykernel/ \;
+          cd anykernel && zip -r9 ../$ZIP_NAME ./*
+          echo "ZIP_FINAL=$ZIP_NAME" >> $GITHUB_ENV
+      - name: 📤 Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kernel-${{ matrix.target }}-Kyler084-Final
+          path: ${{ env.ZIP_FINAL }}
