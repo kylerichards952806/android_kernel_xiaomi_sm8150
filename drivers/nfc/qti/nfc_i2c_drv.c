@@ -245,7 +245,11 @@ ssize_t nfc_i2c_dev_write(struct file *filp, const char __user *buf,
 		goto out;
 	}
 
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	ret = i2c_write(nfc_dev, tmp, count, MAX_RETRY_COUNT);
+#else
 	ret = i2c_write(nfc_dev, tmp, count, NO_RETRY);
+#endif
 	if (ret != count) {
 		pr_err("%s: failed to write %d\n", __func__, ret);
 		ret = -EIO;
