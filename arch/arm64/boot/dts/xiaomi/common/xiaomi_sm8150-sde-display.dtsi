@@ -22,10 +22,6 @@
 	status = "disabled";
 };
 
-&sde_dp {
-	/delete-property/ qcom,dp-aux-switch;
-};
-
 &soc {
 	dsi_amoled_panel_pwr_supply: dsi_amoled_panel_pwr_supply {
 		#address-cells = <1>;
