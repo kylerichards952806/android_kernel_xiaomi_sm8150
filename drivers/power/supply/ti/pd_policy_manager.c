@@ -584,8 +584,8 @@ static int usbpd_pm_enable_cp(struct usbpd_pm *pdpm, bool enable)
 		return -ENODEV;
 
 	val = enable;
-	ret = pd_pl_get_psy_iio_property(
-		pdpm, PD_PL_PSY_IIO_BQ_CHARGING_ENABLED, &val);
+	ret = pd_pl_set_psy_iio_property(
+		pdpm, PD_PL_PSY_IIO_BQ_CHARGING_ENABLED, val);
 
 	return ret;
 }
