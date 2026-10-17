@@ -1880,7 +1880,7 @@
 
 	ufsphy_mem: ufsphy_mem@1d87000 {
 		reg = <0x1d87000 0xda8>; /* PHY regs */
-		reg-names = "phy_mem", "ufs_ice";
+		reg-names = "phy_mem";
 		#phy-cells = <0>;
 
 		lanes-per-direction = <2>;
@@ -2002,7 +2002,11 @@
 		reset-gpios = <&tlmm 175 GPIO_ACTIVE_LOW>;
 
 		resets = <&clock_gcc GCC_UFS_PHY_BCR>;
-		reset-names = "core_reset";
+		reset-names = "rst";
+
+		iommus = <&apps_smmu 0x300 0x0>;
+		qcom,iommu-dma = "fastmap";
+		dma-coherent;
 
 		status = "disabled";
 		qos0 {
