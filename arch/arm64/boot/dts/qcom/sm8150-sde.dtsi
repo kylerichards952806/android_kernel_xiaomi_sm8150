@@ -49,7 +49,7 @@
 				     0x2600 0x2800 0x2a00>;
 		qcom,sde-ctl-size = <0x1e0>;
 		qcom,sde-ctl-display-pref = "primary", "none", "none",
-			    "none", "none";
+			    "none", "none", "none";
 
 		qcom,sde-mixer-off = <0x45000 0x46000 0x47000
 				      0x48000 0x49000 0x4a000>;
@@ -191,6 +191,8 @@
 		qcom,sde-qos-lut-cwb = <0x75300000 0x0>, <0x75300000 0x0>;
 
 		qcom,sde-cdp-setting = <1 1>, <1 0>;
+
+		qcom,sde-qos-refresh-rates = <60 120>;
 
 		qcom,sde-qos-cpu-mask = <0x3>;
 		qcom,sde-qos-cpu-mask-performance = <0xf>;
