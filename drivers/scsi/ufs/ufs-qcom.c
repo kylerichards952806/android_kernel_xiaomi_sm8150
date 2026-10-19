@@ -1612,18 +1612,13 @@ static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_qcom_host *host, bool enable)
 		 * device ref_clk is stable for a given time before the hibern8
 		 * exit command.
 		 */
-		if (enable) {
+		if (enable)
 #ifdef CONFIG_MACH_XIAOMI_SM8150
-			if (host->hba->dev_quirks &
-					UFS_DEVICE_QUIRK_WAIT_AFTER_REF_CLK_UNGATE)
-				usleep_range(960, 970);
-			else
-				usleep_range(200, 210);
+			usleep_range(960, 970);
 #else
 			usleep_range(50, 60);
 #endif
-		}
-	
+
 		host->is_dev_ref_clk_enabled = enable;
 	}
 }
