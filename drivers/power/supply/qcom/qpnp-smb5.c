@@ -1180,6 +1180,7 @@ int smb5_set_prop_comp_clamp_level(struct smb_charger *chg,
 	return rc;
 }
 
+
 /************************
  * USB PSY REGISTRATION *
  ************************/
@@ -1192,6 +1193,10 @@ static enum power_supply_property smb5_usb_props[] = {
 	POWER_SUPPLY_PROP_TYPE,
 #if defined(CONFIG_MACH_XIAOMI_VAYU)
 	POWER_SUPPLY_PROP_QUICK_CHARGE_TYPE,
+#endif
+#if defined(CONFIG_MACH_XIAOMI_SM8150)
+	POWER_SUPPLY_PROP_REAL_FAKE,
+	POWER_SUPPLY_PROP_PD_AUTHENTICATION,
 #endif
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
@@ -1229,6 +1234,14 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 #if defined(CONFIG_MACH_XIAOMI_VAYU)
 	case POWER_SUPPLY_PROP_QUICK_CHARGE_TYPE:
 		val->intval = smblib_get_quick_charge_type(chg);
+		break;
+#endif
+#if defined(CONFIG_MACH_XIAOMI_SM8150)
+	case POWER_SUPPLY_PROP_REAL_FAKE:
+		val->intval = chg->real_charger_type;
+		break;
+	case POWER_SUPPLY_PROP_PD_AUTHENTICATION:
+		val->intval = chg->pd_verifed;
 		break;
 #endif
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
@@ -1290,6 +1303,26 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_POWER_NOW:
 			chg->qc3p5_detected_mw = val->intval;
 		break;
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	case POWER_SUPPLY_PROP_PD_AUTHENTICATION:
+		chg->pd_verifed = val->intval;
+#if defined(CONFIG_MACH_XIAOMI_VAYU)
+		/*if set pd authentication auto set fastcharge mode*/
+		/*do not break here*/
+		/* POWER_SUPPLY_PROP_FASTCHARGE_MODE: */
+		power_supply_changed(chg->usb_psy);
+		if (chg->support_ffc) {
+			rc = smblib_set_fastcharge_mode(chg, val->intval);
+		}
+		schedule_delayed_work(&chg->report_soc_decimal_work,
+				msecs_to_jiffies(REPORT_SOC_DECIMAL_MS));
+		break;
+#else
+		rc = vote(chg->usb_icl_votable, PD_VERIFED_VOTER,
+				!chg->pd_verifed, PD_UNVERIFED_CURRENT);
+		break;
+#endif
+#endif
 	default:
 		pr_err("Set prop %d is not supported in usb psy\n",
 				psp);
@@ -1306,6 +1339,9 @@ static int smb5_usb_prop_is_writeable(struct power_supply *psy,
 	switch (psp) {
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
 	case POWER_SUPPLY_PROP_POWER_NOW:
+#ifdef CONFIG_MACH_XIAOMI_SM8150
+	case POWER_SUPPLY_PROP_PD_AUTHENTICATION:
+#endif
 		return 1;
 	default:
 		break;
