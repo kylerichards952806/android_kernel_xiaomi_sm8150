@@ -5,7 +5,7 @@ cameratree := $(srctree)/techpack/camera-msmnile/drivers
 cam_include_dirs := $(shell dirname `find $(cameratree) -name '*.h'` | uniq)
 ccflags-y += $(addprefix -I,$(cam_include_dirs))
 
-ccflags-y += -I$(srctree)/techpack/camera-msmnile/include/uapi/camera
+ccflags-y += -I$(srctree)/techpack/camera-msmnile/include/uapi/camera-msmnile
 ccflags-y += -I$(srctree)
 
 camera-y := \
