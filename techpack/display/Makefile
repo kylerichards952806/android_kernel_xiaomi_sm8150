@@ -33,7 +33,8 @@ endif
 
 LINUXINCLUDE    += \
 		   -I$(srctree)/techpack/display/include/uapi/display \
-		   -I$(srctree)/techpack/display/include
+		   -I$(srctree)/techpack/display/include \
+		   -I$(srctree)/techpack/video_gen3meta/include/uapi
 USERINCLUDE     += -I$(srctree)/techpack/display/include/uapi/display
 
 ifeq ($(CONFIG_ARCH_LITO), y)

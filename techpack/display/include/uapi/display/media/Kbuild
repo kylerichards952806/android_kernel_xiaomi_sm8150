@@ -3,3 +3,4 @@
 header-y += msm_sde_rotator.h
 header-y += mmm_color_fmt.h
 header-y += mmm_color_fmt_msmnile.h
+header-y += msm_media_info_rotator.h
