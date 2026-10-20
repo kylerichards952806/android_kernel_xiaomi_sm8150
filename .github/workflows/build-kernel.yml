@@ -42,6 +42,14 @@ env:
     CLANG_TRIPLE=aarch64-linux-gnu-
   KBUILD_BUILD_USER: duckyduck
   KBUILD_BUILD_HOST: metonator.dev
+  # Taken verbatim from the vayu device's own boot.img header, so the image we
+  # emit is laid out exactly like the one the bootloader already accepts.
+  BOOT_CMDLINE: >-
+    androidboot.hardware=qcom androidboot.console=ttyMSM0 androidboot.memcg=1
+    lpm_levels.sleep_disabled=1 msm_rtb.filter=0x237 service_locator.enable=1
+    swiotlb=2048 loop.max_part=7 androidboot.usbcontroller=a600000.dwc3
+    androidboot.fstab_suffix=qcom androidboot.init_fatal_reboot_target=recovery
+  BOOT_OS_VERSION: '0x220001aa'
 
 jobs:
   build:
@@ -129,18 +137,78 @@ jobs:
           set -o pipefail
           make O=out $MAKE_ARGS -j"$(nproc)" Image dtbs 2>&1 | tee build.log
 
-      - name: Package artifacts
+      - name: Package boot.img and dtbo.img
         if: success()
         run: |
           set -eu
           mkdir -p dist
           cp out/arch/arm64/boot/Image dist/Image
-          for f in dtbo.img dtb.img; do
-            [ -f "out/arch/arm64/boot/$f" ] && cp "out/arch/arm64/boot/$f" dist/
-          done
           cp out/.config dist/kernel.config
+
+          # --- boot.img ---------------------------------------------------
+          # vayu has no vendor_boot partition, so this is a header v2 boot
+          # image with the ramdisk inside it. Every value below was read back
+          # off the device's live boot partition.
+          python3 .github/bootimg/mkbootimg_v2.py \
+            --kernel out/arch/arm64/boot/Image \
+            --ramdisk .github/bootimg/ramdisk-vayu.lz4 \
+            --cmdline "$BOOT_CMDLINE" \
+            --pagesize 4096 \
+            --header_version 2 \
+            --os_version "$BOOT_OS_VERSION" \
+            --base 0 \
+            --kernel_offset 0x8000 \
+            --ramdisk_offset 0x1000000 \
+            --second_offset 0 \
+            --tags_offset 0x100 \
+            -o dist/boot.img
+
+          # --- dtbo.img ---------------------------------------------------
+          dtbo="$(find out/arch/arm64/boot/dts -name 'vayu-sm8150-overlay.dtbo' | head -1)"
+          if [ -z "$dtbo" ]; then
+            echo '::error::vayu-sm8150-overlay.dtbo was not built'
+            exit 1
+          fi
+          python3 .github/bootimg/mkdtimg.py "$dtbo" --page_size 4096 -o dist/dtbo.img
+          find out/arch/arm64/boot/dts -name '*.dtb' -exec cp {} dist/ \;
+
           (cd dist && sha256sum * > SHA256SUMS.txt)
           ls -lh dist
+
+      - name: Verify packaged images
+        if: success()
+        run: |
+          set -eu
+          python3 - <<'PY'
+import struct, sys
+
+boot = open('dist/boot.img', 'rb').read()
+image = open('dist/Image', 'rb').read()
+
+assert boot[:8] == b'ANDROID!', 'boot.img magic'
+ks, ka, rs, ra, ss, sa, tags, page, hv, osv = struct.unpack_from('<10I', boot, 8)
+assert hv == 2, 'expected header_version 2, got %d' % hv
+assert page == 4096, 'page size %d' % page
+assert (ka, ra, tags, sa) == (0x8000, 0x1000000, 0x100, 0), \
+    'addresses %r' % ((ka, ra, tags, sa),)
+assert ks == len(image), 'kernel size %d != Image %d' % (ks, len(image))
+assert boot[page:page + ks] == image, 'embedded kernel != Image'
+cmdline = boot[0x40:0x240].rstrip(b'\x00')
+assert b'androidboot.hardware=qcom' in cmdline, cmdline[:60]
+
+size = page + ((ks + page - 1)//page)*page + ((rs + page - 1)//page)*page
+assert size <= 134217728, 'boot.img %d exceeds the 128 MiB partition' % size
+
+print('boot.img ok: header v%d, %d bytes, kernel %d, ramdisk %d' % (hv, size, ks, rs))
+
+with open('dist/dtbo.img', 'rb') as f:
+    d = f.read(32)
+magic, total, hsize, esize, ecount, eoff, dpage, ver = struct.unpack('>8I', d)
+assert magic == 0xD7B7AB1E, 'dtbo magic 0x%08x' % magic
+assert ecount >= 1, 'no dtbo entries'
+assert total == len(open('dist/dtbo.img','rb').read()), 'dtbo total_size mismatch'
+print('dtbo.img ok: %d entries, %d bytes' % (ecount, total))
+PY
 
       - name: Upload build log
         if: always()
