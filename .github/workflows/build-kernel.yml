@@ -48,10 +48,13 @@ jobs:
 
       - name: Add swap (LTO needs headroom on 16 GB runners)
         run: |
-          sudo fallocate -l 8G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
+          # Best effort: LTO_CLANG can be memory hungry. Never fail the job here.
+          if ! sudo swapon --show | grep -q '/'; then
+            sudo dd if=/dev/zero of=/swapfile2 bs=1M count=8192 status=none || true
+            sudo chmod 600 /swapfile2 || true
+            sudo mkswap /swapfile2 || true
+            sudo swapon /swapfile2 || true
+          fi
           free -h
 
       - name: Install toolchain
