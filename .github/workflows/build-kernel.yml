@@ -24,21 +24,30 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # The kernel Makefile does `CC = $(CROSS_COMPILE)gcc`, and a plain Makefile
+  # assignment beats an environment variable, so the toolchain has to be
+  # passed as a make *argument* ($(MAKE_ARGS)), not exported here.
+  MAKE_ARGS: >-
+    ARCH=arm64
+    CC=clang-14
+    LD=ld.lld-14
+    AR=llvm-ar-14
+    NM=llvm-nm-14
+    OBJCOPY=llvm-objcopy-14
+    OBJDUMP=llvm-objdump-14
+    STRIP=llvm-strip-14
+    READELF=llvm-readelf-14
+    CROSS_COMPILE=aarch64-linux-gnu-
+    CLANG_TRIPLE=aarch64-linux-gnu-
+  KBUILD_BUILD_USER: duckyduck
+  KBUILD_BUILD_HOST: metonator.dev
+
 jobs:
   build:
     name: arm64 ${{ inputs.config || 'vayu' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 350
-
-    env:
-      ARCH: arm64
-      SUBARCH: arm64
-      CC: clang-14
-      LD: ld.lld-14
-      CROSS_COMPILE: aarch64-linux-gnu-
-      CLANG_TRIPLE: aarch64-linux-gnu-
-      KBUILD_BUILD_USER: duckyduck
-      KBUILD_BUILD_HOST: metonator.dev
 
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +71,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             bc bison flex cpio rsync libssl-dev libelf-dev \
-            python3 python3-pip make gcc \
+            python3 make gcc \
             clang-14 lld-14 llvm-14 \
             binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu
           echo "--- versions ---"
@@ -78,33 +87,33 @@ jobs:
           # so the base defconfig must be generated first and each fragment
           # applied in its own `make` invocation. This is exactly the order
           # TARGET_KERNEL_CONFIG uses in BoardConfigCommon.mk.
-          make O=out ARCH=arm64 vendor/sm8150-qgki_defconfig
-          make O=out ARCH=arm64 vendor/xiaomi/sm8150-common.config
-          make O=out ARCH=arm64 vendor/xiaomi/${{ inputs.config || 'vayu' }}.config
+          make O=out $MAKE_ARGS vendor/sm8150-qgki_defconfig
+          make O=out $MAKE_ARGS vendor/xiaomi/sm8150-common.config
+          make O=out $MAKE_ARGS vendor/xiaomi/${{ inputs.config || 'vayu' }}.config
+
           echo "--- key config values ---"
           grep -E '^CONFIG_(LOCALVERSION|ARCH_QCOM|RPS|I2C)=' out/.config
-          echo "--- sanity: ARCH_QCOM must be y ---"
           grep -q '^CONFIG_ARCH_QCOM=y' out/.config \
             || { echo '::error::ARCH_QCOM not enabled; the defconfig base was lost'; exit 1; }
 
-          # The tree ships CONFIG_CC_WERROR=y and was built by the vendor with
-          # clang 22 (llvm-r596125). Under clang-14 a handful of pre-existing
-          # format strings in code the vendor toolchain accepts become errors:
-          #   mm/slub.c:6222        %zu with unsigned int (l->count)
-          #   mm/slub.c:6227        %pS with unsigned long (l->addrs[j])
-          #   kernel/sched/walt/walt.c:209  %llu with u32/pid_t
-          # None of them are in the code touched by this repo, so relax
-          # -Werror rather than patching unrelated vendor code. Compile errors
-          # still fail the build; only warnings are downgraded.
+          # The tree sets CONFIG_CC_WERROR=y and was built by the vendor with
+          # clang 22. Several pre-existing constructs in vendor code warn under
+          # clang-14 (mm/slub.c %zu/%pS, kernel/sched/walt/walt.c %llu). They
+          # are not in code this repo touches, so downgrade warnings to
+          # warnings; real compile errors still fail the build.
           scripts/config --file out/.config -d CC_WERROR
-          make O=out ARCH=arm64 olddefconfig
-          grep -q '^# CONFIG_CC_WERROR is not set' out/.config \
+          # Drop stale generated config so the next make cannot inherit the
+          # previous CONFIG_CC_WERROR=y through include/config/auto.conf.
+          rm -f out/include/config/auto.conf out/include/config/auto.conf.cmd \
+                out/include/generated/autoconf.h
+          make O=out $MAKE_ARGS olddefconfig
+          grep -E '^# CONFIG_CC_WERROR is not set' out/.config \
             || { echo '::error::CC_WERROR still enabled'; exit 1; }
 
       - name: Build
         run: |
           set -o pipefail
-          make O=out ARCH=arm64 -j"$(nproc)" Image dtbs 2>&1 | tee build.log
+          make O=out $MAKE_ARGS -j"$(nproc)" Image dtbs 2>&1 | tee build.log
 
       - name: Package artifacts
         if: success()
@@ -112,12 +121,9 @@ jobs:
           set -eu
           mkdir -p dist
           cp out/arch/arm64/boot/Image dist/Image
-          if [ -f out/arch/arm64/boot/dtbo.img ]; then
-            cp out/arch/arm64/boot/dtbo.img dist/
-          fi
-          if [ -f out/arch/arm64/boot/dtb.img ]; then
-            cp out/arch/arm64/boot/dtb.img dist/
-          fi
+          for f in dtbo.img dtb.img; do
+            [ -f "out/arch/arm64/boot/$f" ] && cp "out/arch/arm64/boot/$f" dist/
+          done
           cp out/.config dist/kernel.config
           (cd dist && sha256sum * > SHA256SUMS.txt)
           ls -lh dist
