@@ -26,6 +26,10 @@ cmdline        androidboot.hardware=qcom androidboot.console=ttyMSM0 ...
 
 `boot` is 128 MiB (`sde49`); `dtbo` is 32 MiB (`sde45`).
 
+`os_version` 0x220001aa decodes to platform version **17** in bits 31..25, which
+matches the ROM on the device (LineageOS 24.0 = Android 17, API 37) — a second
+check that the value copied out of the header is the right one.
+
 Because header v2 has no DTB field, the device tree overlay cannot live inside
 `boot.img`. It ships as a separate `dtbo.img` for the `dtbo` partition:
 
