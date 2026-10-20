@@ -77,9 +77,20 @@ jobs:
             python3 make gcc \
             clang-18 lld-18 llvm-18 \
             binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu
+          # The CFI/LTO link step shells out to unversioned llvm-nm/llvm-objcopy
+          # rather than $(NM)/$(OBJCOPY), so the versioned binaries alone are
+          # not enough.
+          for t in clang clang++ ld.lld llvm-ar llvm-nm llvm-objcopy llvm-objdump \
+                   llvm-readelf llvm-strip llvm-size llvm-symbolizer llvm-cov \
+                   llvm-profdata llvm-as llvm-link llvm-config opt llc; do
+            if [ -e "/usr/bin/$t-18" ]; then
+              sudo ln -sf "/usr/bin/$t-18" "/usr/local/bin/$t"
+            fi
+          done
           echo "--- versions ---"
-          clang-18 --version
+          clang-18 --version | head -2
           ld.lld-18 --version
+          llvm-nm --version | head -1
           aarch64-linux-gnu-ld --version | head -1
 
       - name: Configure
