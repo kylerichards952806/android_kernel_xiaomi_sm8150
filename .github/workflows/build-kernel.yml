@@ -177,38 +177,7 @@ jobs:
 
       - name: Verify packaged images
         if: success()
-        run: |
-          set -eu
-          python3 - <<'PY'
-import struct, sys
-
-boot = open('dist/boot.img', 'rb').read()
-image = open('dist/Image', 'rb').read()
-
-assert boot[:8] == b'ANDROID!', 'boot.img magic'
-ks, ka, rs, ra, ss, sa, tags, page, hv, osv = struct.unpack_from('<10I', boot, 8)
-assert hv == 2, 'expected header_version 2, got %d' % hv
-assert page == 4096, 'page size %d' % page
-assert (ka, ra, tags, sa) == (0x8000, 0x1000000, 0x100, 0), \
-    'addresses %r' % ((ka, ra, tags, sa),)
-assert ks == len(image), 'kernel size %d != Image %d' % (ks, len(image))
-assert boot[page:page + ks] == image, 'embedded kernel != Image'
-cmdline = boot[0x40:0x240].rstrip(b'\x00')
-assert b'androidboot.hardware=qcom' in cmdline, cmdline[:60]
-
-size = page + ((ks + page - 1)//page)*page + ((rs + page - 1)//page)*page
-assert size <= 134217728, 'boot.img %d exceeds the 128 MiB partition' % size
-
-print('boot.img ok: header v%d, %d bytes, kernel %d, ramdisk %d' % (hv, size, ks, rs))
-
-with open('dist/dtbo.img', 'rb') as f:
-    d = f.read(32)
-magic, total, hsize, esize, ecount, eoff, dpage, ver = struct.unpack('>8I', d)
-assert magic == 0xD7B7AB1E, 'dtbo magic 0x%08x' % magic
-assert ecount >= 1, 'no dtbo entries'
-assert total == len(open('dist/dtbo.img','rb').read()), 'dtbo total_size mismatch'
-print('dtbo.img ok: %d entries, %d bytes' % (ecount, total))
-PY
+        run: python3 .github/bootimg/verify_images.py dist
 
       - name: Upload build log
         if: always()
