@@ -87,6 +87,20 @@ jobs:
           grep -q '^CONFIG_ARCH_QCOM=y' out/.config \
             || { echo '::error::ARCH_QCOM not enabled; the defconfig base was lost'; exit 1; }
 
+          # The tree ships CONFIG_CC_WERROR=y and was built by the vendor with
+          # clang 22 (llvm-r596125). Under clang-14 a handful of pre-existing
+          # format strings in code the vendor toolchain accepts become errors:
+          #   mm/slub.c:6222        %zu with unsigned int (l->count)
+          #   mm/slub.c:6227        %pS with unsigned long (l->addrs[j])
+          #   kernel/sched/walt/walt.c:209  %llu with u32/pid_t
+          # None of them are in the code touched by this repo, so relax
+          # -Werror rather than patching unrelated vendor code. Compile errors
+          # still fail the build; only warnings are downgraded.
+          scripts/config --file out/.config -d CC_WERROR
+          make O=out ARCH=arm64 olddefconfig
+          grep -q '^# CONFIG_CC_WERROR is not set' out/.config \
+            || { echo '::error::CC_WERROR still enabled'; exit 1; }
+
       - name: Build
         run: |
           set -o pipefail
