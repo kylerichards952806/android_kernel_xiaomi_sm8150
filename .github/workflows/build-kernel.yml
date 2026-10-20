@@ -11,6 +11,22 @@ on:
         options:
           - vayu
           - sm8150-common
+      variant:
+        description: >-
+          Build-time simplifications used to bisect a kernel that does not boot.
+          'stock' reproduces the vendor config exactly.
+        required: false
+        default: 'stock'
+        type: choice
+        options:
+          - stock
+          - no-lto
+          - no-lto-no-reloc
+      ref:
+        description: 'Commit, branch or tag to build (default: the dispatched ref)'
+        required: false
+        default: ''
+        type: string
   push:
     branches:
       - MI_SM8150_5.4
@@ -21,7 +37,9 @@ on:
       - '**.md'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # variant and ref are part of the key so that dispatching several bisect
+  # builds at once does not cancel the ones already running.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.variant }}-${{ inputs.ref }}
   cancel-in-progress: true
 
 env:
@@ -53,7 +71,7 @@ env:
 
 jobs:
   build:
-    name: arm64 ${{ inputs.config || 'vayu' }}
+    name: arm64 ${{ inputs.config || 'vayu' }}${{ inputs.variant && inputs.variant != 'stock' && format(' [{0}]', inputs.variant) || '' }}
     # ubuntu-24.04 ships LLVM 18. LLVM 14's ld.lld cannot resolve the ABS32
     # relocations that CONFIG_MODVERSIONS emits for the __crc_* symbols, which
     # fails only at the final vmlinux link.
@@ -63,8 +81,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 50
           submodules: false
+
+      - name: Show what is being built
+        run: |
+          git log --oneline -1
+          # CONFIG_LOCALVERSION_AUTO makes the kernel release carry -g<sha>, so
+          # the build records which commit it came from.
+          echo "LOCALVERSION_AUTO sha: $(git rev-parse --short HEAD)"
 
       - name: Add swap (LTO needs headroom on 16 GB runners)
         run: |
@@ -128,9 +154,42 @@ jobs:
           # previous CONFIG_CC_WERROR=y through include/config/auto.conf.
           rm -f out/include/config/auto.conf out/include/config/auto.conf.cmd \
                 out/include/generated/autoconf.h
+
+          # Optional simplifications for bisecting a kernel that the bootloader
+          # refuses to start. LTO/CFI and the KASLR relocation data are the two
+          # parts of the image that depend most on the exact LLVM version, and
+          # a bad relocation table crashes before the first console write, so
+          # the device shows nothing at all.
+          case "${{ inputs.variant || 'stock' }}" in
+            stock)
+              ;;
+            no-lto)
+              scripts/config --file out/.config \
+                -d LTO_CLANG -d LTO_CLANG_THIN -d LTO_CLANG_FULL -e LTO_NONE \
+                -d CFI_CLANG -d CFI_PERMISSIVE -d SHADOW_CALL_STACK \
+                -d CC_IS_CLANG_CFI
+              ;;
+            no-lto-no-reloc)
+              scripts/config --file out/.config \
+                -d LTO_CLANG -d LTO_CLANG_THIN -d LTO_CLANG_FULL -e LTO_NONE \
+                -d CFI_CLANG -d CFI_PERMISSIVE -d SHADOW_CALL_STACK \
+                -d CC_IS_CLANG_CFI \
+                -d RANDOMIZE_BASE -d RELOCATABLE
+              ;;
+            *)
+              echo "::error::unknown variant '${{ inputs.variant }}'"
+              exit 1
+              ;;
+          esac
           make O=out $MAKE_ARGS olddefconfig
           grep -E '^# CONFIG_CC_WERROR is not set' out/.config \
             || { echo '::error::CC_WERROR still enabled'; exit 1; }
+
+          echo "--- LTO/CFI/KASLR state (variant=${{ inputs.variant || 'stock' }}) ---"
+          grep -E '^CONFIG_(LTO|LTO_CLANG|LTO_CLANG_THIN|LTO_NONE|CFI_CLANG|SHADOW_CALL_STACK|RELOCATABLE|RANDOMIZE_BASE)=' \
+            out/.config || true
+          grep -E '^# CONFIG_(LTO_CLANG|LTO_NONE|CFI_CLANG|SHADOW_CALL_STACK|RELOCATABLE|RANDOMIZE_BASE) is not set' \
+            out/.config || true
 
       - name: Build
         run: |
@@ -192,7 +251,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-arm64-${{ inputs.config || 'vayu' }}
+          name: kernel-arm64-${{ inputs.config || 'vayu' }}${{ inputs.variant && inputs.variant != 'stock' && format('-{0}', inputs.variant) || '' }}
           path: dist/
           if-no-files-found: error
           retention-days: 30
