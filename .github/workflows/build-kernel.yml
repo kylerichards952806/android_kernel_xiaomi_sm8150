@@ -73,15 +73,19 @@ jobs:
       - name: Configure
         run: |
           set -eu
-          make -s O=out ARCH=arm64 vendor/sm8150-qgki_defconfig
-          # vayu.config already pulls in the sm8150-common settings; merge the
-          # common fragment first so per-device values win.
-          scripts/kconfig/merge_config.sh -O out -m \
-            arch/arm64/configs/vendor/xiaomi/sm8150-common.config \
-            arch/arm64/configs/vendor/xiaomi/${{ inputs.config || 'vayu' }}.config
-          make -s O=out ARCH=arm64 olddefconfig
-          echo "--- resulting release string ---"
-          grep -E '^CONFIG_LOCALVERSION=' out/.config
+          # kbuild's %.config rule merges each fragment onto the .config that
+          # already exists (scripts/kconfig/merge_config.sh -m .config ...),
+          # so the base defconfig must be generated first and each fragment
+          # applied in its own `make` invocation. This is exactly the order
+          # TARGET_KERNEL_CONFIG uses in BoardConfigCommon.mk.
+          make O=out ARCH=arm64 vendor/sm8150-qgki_defconfig
+          make O=out ARCH=arm64 vendor/xiaomi/sm8150-common.config
+          make O=out ARCH=arm64 vendor/xiaomi/${{ inputs.config || 'vayu' }}.config
+          echo "--- key config values ---"
+          grep -E '^CONFIG_(LOCALVERSION|ARCH_QCOM|RPS|I2C)=' out/.config
+          echo "--- sanity: ARCH_QCOM must be y ---"
+          grep -q '^CONFIG_ARCH_QCOM=y' out/.config \
+            || { echo '::error::ARCH_QCOM not enabled; the defconfig base was lost'; exit 1; }
 
       - name: Build
         run: |
