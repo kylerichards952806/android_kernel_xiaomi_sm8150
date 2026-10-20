@@ -1,0 +1,120 @@
+name: Build kernel (SM8150 / vayu)
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        description: 'Defconfig fragment set'
+        required: false
+        default: 'vayu'
+        type: choice
+        options:
+          - vayu
+          - sm8150-common
+  push:
+    branches:
+      - MI_SM8150_5.4
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: arm64 ${{ inputs.config || 'vayu' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 350
+
+    env:
+      ARCH: arm64
+      SUBARCH: arm64
+      CC: clang-14
+      LD: ld.lld-14
+      CROSS_COMPILE: aarch64-linux-gnu-
+      CLANG_TRIPLE: aarch64-linux-gnu-
+      KBUILD_BUILD_USER: duckyduck
+      KBUILD_BUILD_HOST: metonator.dev
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: false
+
+      - name: Add swap (LTO needs headroom on 16 GB runners)
+        run: |
+          sudo fallocate -l 8G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison flex cpio rsync libssl-dev libelf-dev \
+            python3 python3-pip make gcc \
+            clang-14 lld-14 llvm-14 \
+            binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu
+          echo "--- versions ---"
+          clang-14 --version
+          ld.lld-14 --version
+          aarch64-linux-gnu-ld --version | head -1
+
+      - name: Configure
+        run: |
+          set -eu
+          make -s O=out ARCH=arm64 vendor/sm8150-qgki_defconfig
+          # vayu.config already pulls in the sm8150-common settings; merge the
+          # common fragment first so per-device values win.
+          scripts/kconfig/merge_config.sh -O out -m \
+            arch/arm64/configs/vendor/xiaomi/sm8150-common.config \
+            arch/arm64/configs/vendor/xiaomi/${{ inputs.config || 'vayu' }}.config
+          make -s O=out ARCH=arm64 olddefconfig
+          echo "--- resulting release string ---"
+          grep -E '^CONFIG_LOCALVERSION=' out/.config
+
+      - name: Build
+        run: |
+          set -o pipefail
+          make O=out ARCH=arm64 -j"$(nproc)" Image dtbs 2>&1 | tee build.log
+
+      - name: Package artifacts
+        if: success()
+        run: |
+          set -eu
+          mkdir -p dist
+          cp out/arch/arm64/boot/Image dist/Image
+          if [ -f out/arch/arm64/boot/dtbo.img ]; then
+            cp out/arch/arm64/boot/dtbo.img dist/
+          fi
+          if [ -f out/arch/arm64/boot/dtb.img ]; then
+            cp out/arch/arm64/boot/dtb.img dist/
+          fi
+          cp out/.config dist/kernel.config
+          (cd dist && sha256sum * > SHA256SUMS.txt)
+          ls -lh dist
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload kernel
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-arm64-${{ inputs.config || 'vayu' }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
