@@ -30,14 +30,14 @@ env:
   # passed as a make *argument* ($(MAKE_ARGS)), not exported here.
   MAKE_ARGS: >-
     ARCH=arm64
-    CC=clang-14
-    LD=ld.lld-14
-    AR=llvm-ar-14
-    NM=llvm-nm-14
-    OBJCOPY=llvm-objcopy-14
-    OBJDUMP=llvm-objdump-14
-    STRIP=llvm-strip-14
-    READELF=llvm-readelf-14
+    CC=clang-18
+    LD=ld.lld-18
+    AR=llvm-ar-18
+    NM=llvm-nm-18
+    OBJCOPY=llvm-objcopy-18
+    OBJDUMP=llvm-objdump-18
+    STRIP=llvm-strip-18
+    READELF=llvm-readelf-18
     CROSS_COMPILE=aarch64-linux-gnu-
     CLANG_TRIPLE=aarch64-linux-gnu-
   KBUILD_BUILD_USER: duckyduck
@@ -46,7 +46,10 @@ env:
 jobs:
   build:
     name: arm64 ${{ inputs.config || 'vayu' }}
-    runs-on: ubuntu-22.04
+    # ubuntu-24.04 ships LLVM 18. LLVM 14's ld.lld cannot resolve the ABS32
+    # relocations that CONFIG_MODVERSIONS emits for the __crc_* symbols, which
+    # fails only at the final vmlinux link.
+    runs-on: ubuntu-24.04
     timeout-minutes: 350
 
     steps:
@@ -72,11 +75,11 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             bc bison flex cpio rsync libssl-dev libelf-dev \
             python3 make gcc \
-            clang-14 lld-14 llvm-14 \
+            clang-18 lld-18 llvm-18 \
             binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu
           echo "--- versions ---"
-          clang-14 --version
-          ld.lld-14 --version
+          clang-18 --version
+          ld.lld-18 --version
           aarch64-linux-gnu-ld --version | head -1
 
       - name: Configure
