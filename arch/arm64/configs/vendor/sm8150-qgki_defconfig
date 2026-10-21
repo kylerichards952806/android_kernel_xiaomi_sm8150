@@ -1,5 +1,9 @@
 CONFIG_UAPI_HEADER_TEST=y
 CONFIG_LOCALVERSION="-vayu-kyler084"
+# Off so the release carries the build number (-0.0.N, set per compile) instead
+# of appending the commit hash AFTER it: with AUTO=y, setlocalversion always
+# appends -g<sha> and the version in Android settings becomes unreadable.
+# CONFIG_LOCALVERSION_AUTO is not set
 CONFIG_AUDIT=y
 CONFIG_PRINT_SUSPEND_EPOCH_QGKI=y
 CONFIG_NO_HZ=y
