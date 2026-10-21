@@ -368,7 +368,8 @@ jobs:
           # can point at an older tree that predates them — the vendor baseline
           # does. Losing a finished 12-minute build to a missing helper script is
           # pure waste, so borrow them from the workflow's own commit.
-          if [ -f .github/bootimg/mkbootimg_v2.py ] \
+          if [ -f .github/bootimg/splice_boot.py ] \
+             && [ -f .github/bootimg/boot-template.img.gz ] \
              && [ -f .github/bootimg/mkdtimg.py ] \
              && [ -f .github/bootimg/verify_images.py ]; then
             echo 'packaging tools present in the checked-out tree'
@@ -389,21 +390,16 @@ jobs:
           cp toolchain-manifest.txt dist/ 2>/dev/null || true
 
           # --- boot.img ---------------------------------------------------
-          # vayu has no vendor_boot partition, so this is a header v2 boot
-          # image with the ramdisk inside it. Every value below was read back
-          # off the device's live boot partition.
-          python3 .github/bootimg/mkbootimg_v2.py \
+          # Spliced into the vendor's own 128 MiB boot partition image rather
+          # than generated from scratch. The bootloader on this device refuses
+          # every image built by mkbootimg_v2.py — even with identical header
+          # fields, full partition length and a valid AVB footer — and boots
+          # any image derived from the vendor dump; see AUDIT.md section 7.
+          # The template keeps the vendor's AVB footer byte for byte, and its
+          # ramdisk, which is the one the installed ROM expects.
+          python3 .github/bootimg/splice_boot.py \
+            --template .github/bootimg/boot-template.img.gz \
             --kernel out/arch/arm64/boot/Image \
-            --ramdisk .github/bootimg/ramdisk-vayu.lz4 \
-            --cmdline "$BOOT_CMDLINE" \
-            --pagesize 4096 \
-            --header_version 2 \
-            --os_version "$BOOT_OS_VERSION" \
-            --base 0 \
-            --kernel_offset 0x8000 \
-            --ramdisk_offset 0x1000000 \
-            --second_offset 0 \
-            --tags_offset 0x100 \
             -o dist/boot.img
 
           # --- dtbo.img ---------------------------------------------------

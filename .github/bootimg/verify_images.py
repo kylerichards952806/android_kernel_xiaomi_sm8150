@@ -32,7 +32,15 @@ assert b"androidboot.hardware=qcom" in cmdline, cmdline[:60]
 size = page + ((ks + page - 1) // page) * page + ((rs + page - 1) // page) * page
 assert size <= BOOT_PARTITION, "boot.img %d exceeds the 128 MiB partition" % size
 
-print("boot.img ok: header v%d, %d bytes, kernel %d, ramdisk %d" % (hv, size, ks, rs))
+# The image must be the whole partition and must still carry the vendor's AVB
+# footer: the bootloader rejects images without it (AUDIT.md section 7), so a
+# truncated or re-signed image has to fail here rather than at the device.
+assert len(boot) == BOOT_PARTITION, \
+    "boot.img is %d bytes, expected the full %d-byte partition" % (len(boot), BOOT_PARTITION)
+assert boot[-64:-60] == b"AVBf", "boot.img is missing the AVB footer"
+
+print("boot.img ok: header v%d, %d bytes, kernel %d, ramdisk %d, avb footer present"
+      % (hv, len(boot), ks, rs))
 
 dtbo_path = os.path.join(dist, "dtbo.img")
 dtbo = open(dtbo_path, "rb").read()
