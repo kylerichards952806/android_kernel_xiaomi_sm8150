@@ -748,7 +748,7 @@ struct smb_charger {
 	struct delayed_work	uusb_otg_work;
 	struct delayed_work	bb_removal_work;
 #ifdef CONFIG_MACH_XIAOMI_SM8150
-#if defined(CONFIG_MACH_XIAOMI_VAYU)
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
 	struct delayed_work	batt_verify_update_work;
 #endif
 	struct delayed_work	raise_qc3_vbus_work;

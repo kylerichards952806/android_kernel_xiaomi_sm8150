@@ -881,6 +881,20 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 	if (IS_ERR_OR_NULL(chg->iio_chan_list_qg))
 		return 0;
 
+// #if defined(CONFIG_BATT_VERIFY_BY_DS28E16) || defined(CONFIG_BATT_VERIFY_BY_DS28E16_NABU)
+// 	rc = smblib_get_prop_from_bms(chg,
+// 					SMB5_QG_AUTHENTIC, &pval.intval);
+// 	if (rc < 0) {
+// 		smblib_err(chg, "Couldn't get battery authentic:%d\n", rc);
+// 		return rc;
+// 	}
+// 	if (!pval.intval)
+// 		enable = false;
+// // #else //debug: fatal if bat is 95%+
+// // 	smblib_err(chg, "battery authentic disabled, enable fastcharge anyway:%d\n", rc);
+// // 	enable = true;
+// #endif
+
 	/*if soc > 95 do not set fastcharge flag*/
 	rc = smblib_get_prop_from_bms(chg,
 				SMB5_QG_CAPACITY, &pval.intval);
@@ -11316,7 +11330,7 @@ relax:
 	pm_relax(chg->dev);
 }
 
-#if defined(CONFIG_MACH_XIAOMI_VAYU)
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
 static void smblib_batt_verify_update_work(struct work_struct *work)
 {
 	struct smb_charger *chg = container_of(work, struct smb_charger,
@@ -11558,7 +11572,7 @@ int smblib_init(struct smb_charger *chg)
 	INIT_DELAYED_WORK(&chg->lpd_ra_open_work, smblib_lpd_ra_open_work);
 	INIT_DELAYED_WORK(&chg->lpd_detach_work, smblib_lpd_detach_work);
 #ifdef CONFIG_MACH_XIAOMI_SM8150
-#if defined(CONFIG_MACH_XIAOMI_VAYU)
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
 	INIT_DELAYED_WORK(&chg->batt_verify_update_work, smblib_batt_verify_update_work);
 #endif
 	INIT_DELAYED_WORK(&chg->raise_qc3_vbus_work, smblib_raise_qc3_vbus_work);
@@ -11775,7 +11789,7 @@ int smblib_deinit(struct smb_charger *chg)
 		cancel_delayed_work_sync(&chg->lpd_ra_open_work);
 		cancel_delayed_work_sync(&chg->lpd_detach_work);
 #ifdef CONFIG_MACH_XIAOMI_SM8150
-#if defined(CONFIG_MACH_XIAOMI_VAYU)
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
 		cancel_delayed_work_sync(&chg->batt_verify_update_work);
 #endif
 		cancel_delayed_work_sync(&chg->raise_qc3_vbus_work);

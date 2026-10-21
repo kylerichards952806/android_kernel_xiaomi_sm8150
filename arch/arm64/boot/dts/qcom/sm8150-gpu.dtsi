@@ -74,7 +74,6 @@
 			<MHZ_TO_KBPS(1555, 4)>, /* index=11  */
 			<MHZ_TO_KBPS(1804, 4)>; /* index=12  */
 
-		/* REVISIT: Check On if 9999999 */
 		qcom,bus-table-cnoc =
 			<0>,   /* Off */
 			<100>; /* On */
