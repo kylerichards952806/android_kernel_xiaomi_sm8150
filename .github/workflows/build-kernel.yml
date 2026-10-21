@@ -64,21 +64,20 @@ env:
   # The device's own kernel config records the compiler the vendor used:
   #   CONFIG_CC_VERSION_TEXT="Android (15071444, +pgo, +bolt, +lto, +mlgo,
   #     based on r596125) clang version 22.0.2"
-  # LLVM 22 is what matters here: that release changed how the arm64 startup
-  # path and its relocation tables are emitted, and those run before the console
-  # exists, so a mismatch is silent rather than a readable crash.
-  #
-  # Build 15071444 / r596125 itself is NOT published: AOSP has a
-  # mirror-goog-llvm-r596125-release branch, but it carries no clang-r596125
-  # directory (it tops out at clang-r584948b, build 14863223, clang 22.0.1).
-  # That directory is the newest public LLVM 22 prebuilt, so it is what is used.
-  # If a clang-r596125 directory ever appears, change only these three values.
-  CLANG_PREBUILT_REF: mirror-goog-llvm-r596125-release
-  # Commit that ref pointed at when this was written, so the archive URL and the
-  # cache key stay immutable even if upstream force-pushes the branch.
-  CLANG_PREBUILT_SHA: 05caf14d5f846c9955d1718cd95cb6ee59a22eac
-  CLANG_PREBUILT_DIR: clang-r584948b
-  CLANG_EXPECT_VERSION: clang version 22.0.1
+  # That is AOSP prebuilt clang-r596125, published on the android17-release
+  # branch: its AndroidVersion.txt reads "22.0.2 / based on r596125", and it
+  # ships manifest_15071444.xml — the same build number the config records. So
+  # this is the vendor's compiler exactly, not just the same major version.
+  # The branch named after the revision (mirror-goog-llvm-r596125-release) is a
+  # decoy: it contains no clang-r596125 directory and stops at clang-r584948b.
+  CLANG_PREBUILT_REF: android17-release
+  # Commit the branch pointed at when this was written, so the archive URL and
+  # the cache key stay immutable even if the branch moves.
+  CLANG_PREBUILT_SHA: 29182889399818f97baa65ea238c80e8117981eb
+  CLANG_PREBUILT_DIR: clang-r596125
+  CLANG_EXPECT_VERSION: clang version 22.0.2
+  CLANG_EXPECT_ANDROID_VERSION: '22.0.2'
+  CLANG_EXPECT_BUILD: '15071444'
   KBUILD_BUILD_USER: duckyduck
   KBUILD_BUILD_HOST: metonator.dev
   # Taken verbatim from the vayu device's own boot.img header, so the image we
@@ -183,13 +182,31 @@ jobs:
               rm -rf "$TOOLCHAIN"
               mkdir -p "$TOOLCHAIN"
               # gitiles serves a directory as a tarball when the path is part of
-              # the URL. It is generated on demand server-side, so allow time.
-              # The archive holds that directory's *contents* at its root, so
-              # there is no wrapping directory to strip.
-              curl -fsSL --retry 5 --retry-delay 5 --max-time 2400 \
-                -o "$RUNNER_TEMP/clang.tar.gz" \
-                "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/${CLANG_PREBUILT_SHA}/${CLANG_PREBUILT_DIR}.tar.gz"
-              ls -lh "$RUNNER_TEMP/clang.tar.gz"
+              # the URL, and builds it on demand, so a single request can stall
+              # or drop mid-stream. Resume from whatever has arrived instead of
+              # starting over: --continue-at - plus a stall detector means a slow
+              # or briefly dead connection costs time, not the job. Four attempts
+              # covering ~45 minutes of a genuinely unreachable server; after one
+              # successful run the cache above means this whole branch is skipped.
+              ARCHIVE="$RUNNER_TEMP/clang.tar.gz"
+              ARCHIVE_URL="https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/${CLANG_PREBUILT_SHA}/${CLANG_PREBUILT_DIR}.tar.gz"
+              for attempt in 1 2 3 4; do
+                if curl -fL --continue-at - \
+                     --retry 3 --retry-delay 5 --retry-all-errors \
+                     --connect-timeout 30 --max-time 1800 \
+                     --speed-limit 1024 --speed-time 180 \
+                     -o "$ARCHIVE" "$ARCHIVE_URL"; then
+                  break
+                fi
+                echo "::warning::download attempt $attempt failed at $(stat -c%s "$ARCHIVE" 2>/dev/null || echo 0) bytes; resuming"
+                sleep $((attempt * 15))
+              done
+              if [ ! -s "$ARCHIVE" ]; then
+                echo "::error::could not fetch $ARCHIVE_URL and no cached copy of $CLANG_PREBUILT_DIR exists"
+                echo '::error::re-run the job once the network recovers, or dispatch with toolchain=llvm-18 to keep the artifacts flowing (that build is not the vendor compiler)'
+                exit 1
+              fi
+              ls -lh "$ARCHIVE"
               # Passing the directory as ?path= instead is silently ignored:
               # gitiles then streams the *whole repository* (multiple GB, and it
               # looks like a successful download). The first tar member gives
@@ -200,11 +217,14 @@ jobs:
                 echo "::error::archive starts at '$top', expected AndroidVersion.txt; got the repository instead of $CLANG_PREBUILT_DIR"
                 exit 1
               fi
-              tar -xzf "$RUNNER_TEMP/clang.tar.gz" -C "$TOOLCHAIN"
-              rm -f "$RUNNER_TEMP/clang.tar.gz"
-              # AndroidVersion.txt is the prebuilt's own statement of what it is.
-              grep -qx '22\.0\.1' "$TOOLCHAIN/AndroidVersion.txt" \
+              tar -xzf "$ARCHIVE" -C "$TOOLCHAIN"
+              rm -f "$ARCHIVE"
+              # AndroidVersion.txt is the prebuilt's own statement of what it is,
+              # and manifest_<build>.xml ties it to the vendor's build number.
+              grep -qx "$CLANG_EXPECT_ANDROID_VERSION" "$TOOLCHAIN/AndroidVersion.txt" \
                 || { echo '::error::unexpected clang version in AndroidVersion.txt'; cat "$TOOLCHAIN/AndroidVersion.txt"; exit 1; }
+              [ -f "$TOOLCHAIN/manifest_$CLANG_EXPECT_BUILD.xml" ] \
+                || { echo "::error::expected manifest_$CLANG_EXPECT_BUILD.xml (the vendor's build); got: $(ls "$TOOLCHAIN"/manifest_*.xml 2>/dev/null)"; exit 1; }
             else
               echo "restored $CLANG_PREBUILT_DIR from cache"
             fi
