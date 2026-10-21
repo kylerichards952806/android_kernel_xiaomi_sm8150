@@ -66,9 +66,6 @@ on:
   push:
     branches:
       - MI_SM8150_5.4
-      # Same kernel, packaged for official LineageOS 22.2 (Android 15): that
-      # ROM's ramdisk in this device's 128 MiB container. See ROM_LABEL below.
-      - '22.2'
     paths-ignore:
       - '**.md'
   pull_request:
@@ -471,16 +468,10 @@ jobs:
           # can point at an older tree that predates them — the vendor baseline
           # does. Losing a finished 12-minute build to a missing helper script is
           # pure waste, so borrow them from the workflow's own commit.
-          # The 22.2 branch also needs the ramdisk it carries from that ROM.
-          ROM_RAMDISK=
-          if [ "${GITHUB_REF_NAME:-}" = "22.2" ]; then
-            ROM_RAMDISK=.github/bootimg/ramdisk-los22.cpio.gz
-          fi
           if [ -f .github/bootimg/splice_boot.py ] \
              && [ -f .github/bootimg/boot-template.img.gz ] \
              && [ -f .github/bootimg/mkdtimg.py ] \
-             && [ -f .github/bootimg/verify_images.py ] \
-             && { [ -z "$ROM_RAMDISK" ] || [ -f "$ROM_RAMDISK" ]; }; then
+             && [ -f .github/bootimg/verify_images.py ]; then
             echo 'packaging tools present in the checked-out tree'
             exit 0
           fi
@@ -506,24 +497,10 @@ jobs:
           # any image derived from the vendor dump; see AUDIT.md section 7.
           # The template keeps the vendor's AVB footer byte for byte, and its
           # ramdisk, which is the one the installed ROM expects.
-          # LineageOS 22.2 (Android 15) cannot use its own boot image as the
-          # container: that footer sits at 50.1 MiB and this kernel alone is
-          # 54.6 MiB, so the splice has nowhere to put the ramdisk. Keep the
-          # 24.0 container, whose footer is at 57.0 MiB and whose appended DTB
-          # the 5.4 kernel was built against, and carry the 22.2 ramdisk over -
-          # the bootloader only loads it, init in that ROM unpacks it.
-          if [ "${GITHUB_REF_NAME:-}" = "22.2" ]; then
-            python3 .github/bootimg/splice_boot.py \
-              --template .github/bootimg/boot-template.img.gz \
-              --kernel out/arch/arm64/boot/Image \
-              --ramdisk .github/bootimg/ramdisk-los22.cpio.gz \
-              -o dist/boot.img
-          else
-            python3 .github/bootimg/splice_boot.py \
-              --template .github/bootimg/boot-template.img.gz \
-              --kernel out/arch/arm64/boot/Image \
-              -o dist/boot.img
-          fi
+          python3 .github/bootimg/splice_boot.py \
+            --template .github/bootimg/boot-template.img.gz \
+            --kernel out/arch/arm64/boot/Image \
+            -o dist/boot.img
 
           # --- dtbo.img ---------------------------------------------------
           dtbo="$(find out/arch/arm64/boot/dts -name 'vayu-sm8150-overlay.dtbo' | head -1)"
@@ -542,13 +519,7 @@ jobs:
         run: |
           set -eu
           VERSION="5.4.302-vayu-kyler084${LOCALVERSION}"
-          # Name the zip after the ROM it is packaged for: two zips with the
-          # same kernel version but different ramdisks must not look alike in a
-          # downloads folder or in the TWRP backup directory on /sdcard.
           ZIP="vayu-kernel-${VERSION}.zip"
-          if [ "${GITHUB_REF_NAME:-}" = "22.2" ]; then
-            ZIP="vayu-kernel-los22.2-${VERSION}.zip"
-          fi
           python3 .github/twrp/make_twrp_zip.py --dist dist --version "$VERSION" \
             --out "dist/$ZIP"
           # Rewrite the checksums now that the zip exists, and list the files
@@ -597,17 +568,9 @@ jobs:
           VERSION="5.4.302-vayu-kyler084${LOCALVERSION}"
           DATE=$(date -u +%Y-%m-%d)
 
-          # Two ROMs are supported from two branches of the same tree, and their
-          # releases must not delete each other: the tag prefix decides both the
-          # tag and which old releases the prune below is allowed to touch.
-          if [ "${GITHUB_REF_NAME:-}" = "22.2" ]; then
-            RELEASE_PREFIX="vayu-los22.2-"
-            ROM_LABEL="LineageOS 22.2 (Android 15) official"
-          else
-            RELEASE_PREFIX="vayu-"
-            ROM_LABEL="LineageOS 24.0 (Android 17)"
-          fi
-          TAG="${RELEASE_PREFIX}${VERSION}-${DATE}"
+          # One ROM, one branch: the tag also decides which older releases the
+          # prune at the end of this step is allowed to delete.
+          TAG="vayu-${VERSION}-${DATE}"
           SHA=$(git rev-parse --short HEAD)
 
           ROOT="none"
@@ -636,7 +599,7 @@ jobs:
             echo
             echo '| field | value |'
             echo '| --- | --- |'
-            echo "| device | vayu (Xiaomi SM8150, ${ROM_LABEL}) |"
+            echo '| device | vayu (Xiaomi SM8150, LineageOS 24.0 / Android 17) |'
             echo "| kernel | ${VERSION} |"
             echo '| builder | kyler084@murena.io |'
             echo "| toolchain | ${{ env.TOOLCHAIN_ID }} |"
@@ -658,14 +621,6 @@ jobs:
             echo '- `SHA256SUMS.txt` — verify before flashing'
             echo
             echo "Built by [run ${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}); images verified by verify_images.py before upload."
-            if [ "${GITHUB_REF_NAME:-}" = "22.2" ]; then
-              echo
-              echo '> **This build is for Android 15 — official LineageOS 22.2, not 24.0.**'
-              echo '> Same 5.4 kernel and the same fixes as the 24.0 builds, packaged with'
-              echo '> that ROM'"'"'s own ramdisk inside this device'"'"'s 128 MiB boot container.'
-              echo '> Do not flash it on LineageOS 24.0 (Android 17), and do not use the'
-              echo '> 24.0 build on 22.2: the ramdisk is what differs.'
-            fi
           } > notes.md
 
           # A re-run of the same dispatch keeps its run number, so replace rather
@@ -674,9 +629,6 @@ jobs:
             gh release delete "$TAG" --yes --cleanup-tag
           fi
           TITLE="vayu ${VERSION} · ${ROOT} · ${DATE}"
-          if [ "${GITHUB_REF_NAME:-}" = "22.2" ]; then
-            TITLE="vayu LOS 22.2 (A15) ${VERSION} · ${ROOT} · ${DATE}"
-          fi
           gh release create "$TAG" \
             --title "$TITLE" \
             --notes-file notes.md \
@@ -687,14 +639,12 @@ jobs:
           # A release is the kernel someone is expected to flash, so an older
           # one is a trap: it is either superseded or outright broken (the
           # first KernelSU build booted but the driver never hooked anything).
-          # Keep exactly the one just published - but only for this ROM: the
-          # 22.2 and 24.0 releases are separate products of the same tree, and
-          # pruning across prefixes would delete the other ROM's kernel.
+          # Keep exactly the one just published.
           gh release list --limit 100 --json tagName --jq '.[].tagName' \
             | while read -r old; do
                 [ "$old" = "$TAG" ] && continue
                 case "$old" in
-                  "$RELEASE_PREFIX"*) ;;
+                  vayu-*) ;;
                   *) continue ;;
                 esac
                 echo "deleting superseded release $old"
