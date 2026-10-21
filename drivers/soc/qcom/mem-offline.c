@@ -765,7 +765,7 @@ static int update_movable_bitmap(void)
 
 	node = of_find_node_by_name(of_root, "memory");
 	if (!node) {
-		pr_err("mem-offine: memory node not found in DT\n");
+		pr_err("mem-offline: memory node not found in DT\n");
 		return -EINVAL;
 	}
 
@@ -1104,18 +1104,18 @@ static int mem_parse_dt(struct platform_device *pdev)
 
 	val = of_get_property(node, "granule", NULL);
 	if (!val) {
-		pr_err("mem-offine: granule property not found in DT\n");
+		pr_err("mem-offline: granule property not found in DT\n");
 		return -EINVAL;
 	}
 	if (!*val) {
-		pr_err("mem-offine: invalid granule property\n");
+		pr_err("mem-offline: invalid granule property\n");
 		return -EINVAL;
 	}
 	offline_granule = be32_to_cpup(val);
 	if (!offline_granule || (offline_granule & (offline_granule - 1)) ||
 	    ((offline_granule * SZ_1M < MIN_MEMORY_BLOCK_SIZE) &&
 	     (MIN_MEMORY_BLOCK_SIZE % (offline_granule * SZ_1M)))) {
-		pr_err("mem-offine: invalid granule property\n");
+		pr_err("mem-offline: invalid granule property\n");
 		return -EINVAL;
 	}
 

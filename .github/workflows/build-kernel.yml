@@ -48,6 +48,16 @@ on:
         required: false
         default: true
         type: boolean
+      werror:
+        description: >-
+          Keep the tree's own CONFIG_CC_WERROR=y instead of downgrading warnings
+          to non-fatal. The vendor tree sets it; the build only relaxes it to
+          answer 'does this image boot'. A strict run either proves the tree is
+          warning-clean with the matched compiler or lists every warning to fix,
+          so it is a diagnostic, not the artifact build.
+        required: false
+        default: false
+        type: boolean
   push:
     branches:
       - MI_SM8150_5.4
@@ -60,7 +70,7 @@ on:
 concurrency:
   # variant and ref are part of the key so that dispatching several bisect
   # builds at once does not cancel the ones already running.
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.variant }}-${{ inputs.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.variant }}-${{ inputs.ref }}-${{ inputs.werror }}
   cancel-in-progress: true
 
 env:
@@ -327,17 +337,22 @@ jobs:
           grep -q '^CONFIG_ARCH_QCOM=y' out/.config \
             || { echo '::error::ARCH_QCOM not enabled; the defconfig base was lost'; exit 1; }
 
-          # The tree sets CONFIG_CC_WERROR=y. The compiler now matches the
-          # vendor's, so the vendor's own code is expected to be warning-clean,
-          # but a warning introduced by a slightly different LLVM sub-revision
-          # would fail the build for a reason unrelated to whether it boots —
-          # which is the question being answered. Warnings stay warnings; real
-          # compile errors still fail.
-          scripts/config --file out/.config -d CC_WERROR
-          # Drop stale generated config so the next make cannot inherit the
-          # previous CONFIG_CC_WERROR=y through include/config/auto.conf.
-          rm -f out/include/config/auto.conf out/include/config/auto.conf.cmd \
-                out/include/generated/autoconf.h
+          # The tree sets CONFIG_CC_WERROR=y. It used to be dropped here on the
+          # theory that a slightly different LLVM sub-revision would turn a
+          # warning into a build failure — but the toolchain now matches the
+          # vendor's exactly, and a warning in this tree is a real defect, not
+          # noise from a stray compiler. werror=true keeps the vendor policy and
+          # turns the run into a warning census; the default stays relaxed until
+          # that census comes back clean.
+          if [ "${{ inputs.werror }}" = 'true' ]; then
+            echo "strict build: keeping CONFIG_CC_WERROR=y"
+          else
+            scripts/config --file out/.config -d CC_WERROR
+            # Drop stale generated config so the next make cannot inherit the
+            # previous CONFIG_CC_WERROR=y through include/config/auto.conf.
+            rm -f out/include/config/auto.conf out/include/config/auto.conf.cmd \
+                  out/include/generated/autoconf.h
+          fi
 
           # Optional simplifications for bisecting a kernel that the bootloader
           # refuses to start. LTO/CFI and the KASLR relocation data are the two
@@ -366,8 +381,13 @@ jobs:
               ;;
           esac
           make O=out $MAKE_ARGS olddefconfig
-          grep -E '^# CONFIG_CC_WERROR is not set' out/.config \
-            || { echo '::error::CC_WERROR still enabled'; exit 1; }
+          if [ "${{ inputs.werror }}" = 'true' ]; then
+            grep -E '^CONFIG_CC_WERROR=y' out/.config \
+              || { echo '::error::CC_WERROR was expected to stay enabled'; exit 1; }
+          else
+            grep -E '^# CONFIG_CC_WERROR is not set' out/.config \
+              || { echo '::error::CC_WERROR still enabled'; exit 1; }
+          fi
 
           echo "--- LTO/CFI/KASLR state (variant=${{ inputs.variant || 'stock' }}) ---"
           grep -E '^CONFIG_(LTO|LTO_CLANG|LTO_CLANG_THIN|LTO_NONE|CFI_CLANG|SHADOW_CALL_STACK|RELOCATABLE|RANDOMIZE_BASE)=' \
@@ -378,7 +398,11 @@ jobs:
       - name: Build
         run: |
           set -o pipefail
-          make O=out $MAKE_ARGS -j"$(nproc)" Image dtbs 2>&1 | tee build.log
+          # -k on a strict run: make stops at the first -Werror failure, and a
+          # census of one warning per dispatch would take a dozen builds.
+          extra=""
+          [ "${{ inputs.werror }}" = 'true' ] && extra="-k"
+          make O=out $MAKE_ARGS $extra -j"$(nproc)" Image dtbs 2>&1 | tee build.log
 
       - name: Fetch packaging tools
         if: success()

@@ -299,7 +299,7 @@ static void __init update_memory_limit(void)
 
 	node = of_get_flat_dt_subnode_by_name(dt_root, "mem-offline");
 	if (node == -FDT_ERR_NOTFOUND) {
-		pr_err("mem-offine node not found in FDT\n");
+		pr_err("mem-offline node not found in FDT\n");
 		return;
 	}
 
@@ -337,7 +337,7 @@ static void __init update_memory_limit(void)
 			len -= t_len;
 		}
 	} else {
-		pr_err("mem-offine: offline-sizes property not found in DT\n");
+		pr_err("mem-offline: offline-sizes property not found in DT\n");
 		return;
 	}
 
