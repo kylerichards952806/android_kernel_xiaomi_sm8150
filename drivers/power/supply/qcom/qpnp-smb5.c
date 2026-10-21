@@ -227,7 +227,7 @@ struct smb_dt_props {
 	int			auto_recharge_vbat_mv;
 	int			wd_bark_time;
 	int			wd_snarl_time_cfg;
-#if defined(CONFIG_MACH_XIAOMI_VAYU)
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
 	int			batt_unverify_fcc_ua;
 #endif
 	int			batt_profile_fcc_ua;
@@ -995,7 +995,9 @@ static int smb5_parse_dt_currents(struct smb5 *chip, struct device_node *node)
 
 #if defined(CONFIG_MACH_XIAOMI_VAYU)
 	chg->batt_profile_fcc_ua = chip->dt.batt_profile_fcc_ua;
+#endif
 
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
 	rc = of_property_read_u32(node,
 			"mi,fcc-batt-unverify-ua", &chip->dt.batt_unverify_fcc_ua);
 	if (rc < 0)
@@ -2586,8 +2588,10 @@ static int smb5_init_hw(struct smb5 *chip)
 	vote(chg->fv_votable, HW_LIMIT_VOTER,
 		chip->dt.batt_profile_fv_uv > 0, chip->dt.batt_profile_fv_uv);
 #if defined(CONFIG_MACH_XIAOMI_VAYU)
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
 	vote(chg->fcc_votable, BATT_VERIFY_VOTER,
 		chip->dt.batt_unverify_fcc_ua > 0, chip->dt.batt_unverify_fcc_ua);
+#endif
 	vote(chg->fv_votable, BATT_PROFILE_VOTER,
 		chg->batt_profile_fv_uv > 0, chg->batt_profile_fv_uv);
 
