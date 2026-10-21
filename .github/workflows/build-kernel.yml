@@ -87,8 +87,9 @@ env:
   CLANG_EXPECT_VERSION: clang version 22.0.2
   CLANG_EXPECT_ANDROID_VERSION: '22.0.2'
   CLANG_EXPECT_BUILD: '15071444'
-  KBUILD_BUILD_USER: duckyduck
-  KBUILD_BUILD_HOST: metonator.dev
+  # These two are what Android shows in parentheses after the kernel version.
+  KBUILD_BUILD_USER: kyler084
+  KBUILD_BUILD_HOST: murena.io
   # Taken verbatim from the vayu device's own boot.img header, so the image we
   # emit is laid out exactly like the one the bootloader already accepts.
   BOOT_CMDLINE: >-
@@ -97,6 +98,11 @@ env:
     swiotlb=2048 loop.max_part=7 androidboot.usbcontroller=a600000.dwc3
     androidboot.fstab_suffix=qcom androidboot.init_fatal_reboot_target=recovery
   BOOT_OS_VERSION: '0x220001aa'
+  # Version shown in Android settings: 5.4.302-vayu-kyler084-0.0.<n>, where n
+  # climbs by one on every compile. n is derived from the workflow run number,
+  # so it needs no stored counter; BUILD_VERSION_BASE is the run number that is
+  # "0.0.1", which makes the next build's number predictable.
+  BUILD_VERSION_BASE: '27'
 
 jobs:
   build:
@@ -246,9 +252,23 @@ jobs:
           echo "PATH=$BIN:$PATH" >> "$GITHUB_ENV"
           echo "TOOLCHAIN=$TOOLCHAIN" >> "$GITHUB_ENV"
 
+          # Build number: 0.0.1 on the first run after BUILD_VERSION_BASE, +1 per
+          # compile. Passing LOCALVERSION on the make command line also makes
+          # scripts/setlocalversion drop the -g<sha> suffix, which is the long
+          # string that used to end the version shown in settings.
+          if [ -n "${GITHUB_RUN_NUMBER:-}" ]; then
+            ver=$(( GITHUB_RUN_NUMBER - BUILD_VERSION_BASE ))
+            [ "$ver" -lt 1 ] && ver=1
+            LOCALVERSION="-0.0.${ver}"
+          else
+            LOCALVERSION=""
+          fi
+          echo "LOCALVERSION=$LOCALVERSION" >> "$GITHUB_ENV"
+          echo "build version: 5.4.302-vayu-kyler084${LOCALVERSION}"
+
           # One line, space separated: make matches the last assignment of a
           # variable, so later flags override anything inherited.
-          echo "MAKE_ARGS=ARCH=arm64 CC=$BIN/$CC_CMD LD=$BIN/$LD_CMD AR=$BIN/$AR_CMD NM=$BIN/$NM_CMD OBJCOPY=$BIN/$OBJCOPY_CMD OBJDUMP=$BIN/$OBJDUMP_CMD STRIP=$BIN/$STRIP_CMD READELF=$BIN/$READELF_CMD CROSS_COMPILE=aarch64-linux-gnu- CLANG_TRIPLE=aarch64-linux-gnu-" >> "$GITHUB_ENV"
+          echo "MAKE_ARGS=ARCH=arm64 CC=$BIN/$CC_CMD LD=$BIN/$LD_CMD AR=$BIN/$AR_CMD NM=$BIN/$NM_CMD OBJCOPY=$BIN/$OBJCOPY_CMD OBJDUMP=$BIN/$OBJDUMP_CMD STRIP=$BIN/$STRIP_CMD READELF=$BIN/$READELF_CMD CROSS_COMPILE=aarch64-linux-gnu- CLANG_TRIPLE=aarch64-linux-gnu- LOCALVERSION=$LOCALVERSION" >> "$GITHUB_ENV"
 
           echo '--- versions ---'
           "$BIN/$CC_CMD" --version | head -2
