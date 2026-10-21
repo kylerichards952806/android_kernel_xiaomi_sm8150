@@ -170,6 +170,34 @@ jobs:
           # the build records which commit it came from.
           echo "LOCALVERSION_AUTO sha: $(git rev-parse --short HEAD)"
 
+      - name: Apply local KernelSU-Next patches
+        run: |
+          set -eu
+          # drivers/kernelsu is a submodule of the upstream project, so fixes we
+          # need against the pinned commit cannot live in it — a push would have
+          # to go to upstream. They live in .github/kernelsu instead and are
+          # applied here, before anything reads the driver.
+          if [ ! -d .github/kernelsu ]; then
+            echo "patch directory missing from this tree; taking it from ${{ github.sha }}"
+            git fetch --depth=1 origin "${{ github.sha }}"
+            git checkout FETCH_HEAD -- .github/kernelsu
+          fi
+          shopt -s nullglob
+          patches=(.github/kernelsu/*.patch)
+          if [ ${#patches[@]} -eq 0 ]; then
+            echo 'no KernelSU-Next patches to apply'
+            exit 0
+          fi
+          for p in "${patches[@]}"; do
+            echo "applying $p"
+            # --check first: a patch that no longer matches is a real failure,
+            # not something to paper over by building without it (the kernel
+            # would come out with a driver that cannot hand out its fd).
+            git -C drivers/kernelsu apply --check "$PWD/$p"
+            git -C drivers/kernelsu apply "$PWD/$p"
+          done
+          git -C drivers/kernelsu status --short
+
       - name: Add swap (LTO needs headroom on 16 GB runners)
         run: |
           # Best effort: LTO_CLANG can be memory hungry. Never fail the job here.
@@ -602,3 +630,15 @@ jobs:
             dist/boot.img dist/dtbo.img dist/*.zip dist/SHA256SUMS.txt \
             dist/kernel.config build.log
           echo "published $TAG"
+
+          # A release is the kernel someone is expected to flash, so an older
+          # one is a trap: it is either superseded or outright broken (the
+          # first KernelSU build booted but the driver never hooked anything).
+          # Keep exactly the one just published.
+          gh release list --limit 100 --json tagName --jq '.[].tagName' \
+            | while read -r old; do
+                [ "$old" = "$TAG" ] && continue
+                echo "deleting superseded release $old"
+                gh release delete "$old" --yes --cleanup-tag || \
+                  echo "::warning::could not delete $old"
+              done

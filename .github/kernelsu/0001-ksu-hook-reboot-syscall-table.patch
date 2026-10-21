@@ -1,0 +1,64 @@
+diff --git a/kernel/hook/syscall_table_hook.c b/kernel/hook/syscall_table_hook.c
+index 6aa55e71..87c8a14c 100644
+--- a/kernel/hook/syscall_table_hook.c
++++ b/kernel/hook/syscall_table_hook.c
+@@ -30,6 +30,7 @@
+ #include "feature/sucompat.h"
+ #include "feature/adb_root.h"
+ #include "runtime/ksud.h"
++#include "supercall/supercall.h"
+ 
+ // The pt_regs-based syscall ABI (__arm64_sys_*/__x64_sys_*) exists since 4.17
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0)
+@@ -199,6 +200,25 @@ static long ksu_sth_faccessat(const struct pt_regs *regs)
+ }
+ #endif
+ 
++// The manager reaches the driver through reboot(2) with the KSU install magic:
++// the kernel hands it an anonymous fd it then drives with ioctls. The kprobe
++// build intercepts __arm64_sys_reboot for this; with the syscall table hook
++// there is no kprobe, so without this wrapper the manager gets no fd at all and
++// reports "Unsupported | Not integrated" while the hooks are in fact live.
++#ifdef __NR_reboot
++static long ksu_sth_reboot(const struct pt_regs *regs)
++{
++	int magic1 = (int)PT_REGS_PARM1(regs);
++	int magic2 = (int)PT_REGS_PARM2(regs);
++	unsigned int cmd = (unsigned int)PT_REGS_PARM3(regs);
++	unsigned long arg4 = (unsigned long)PT_REGS_SYSCALL_PARM4(regs);
++
++	ksu_handle_sys_reboot(magic1, magic2, cmd, (void __user **)&arg4);
++
++	return ksu_sth_call_orig(__NR_reboot, regs);
++}
++#endif
++
+ #ifdef __NR_newfstatat
+ static long ksu_sth_newfstatat(const struct pt_regs *regs)
+ {
+@@ -230,6 +250,9 @@ void __init ksu_syscall_table_hook_init(void)
+ #endif
+ #ifdef __NR_newfstatat
+ 		{ __NR_newfstatat, ksu_sth_newfstatat },
++#endif
++#ifdef __NR_reboot
++		{ __NR_reboot, ksu_sth_reboot },
+ #endif
+ 	};
+ 	int i, patched = 0;
+diff --git a/kernel/supercall/supercall.h b/kernel/supercall/supercall.h
+index 4728b17a..7962ddd5 100644
+--- a/kernel/supercall/supercall.h
++++ b/kernel/supercall/supercall.h
+@@ -20,6 +20,11 @@ struct ksu_ioctl_cmd_map {
+ 
+ // Install KSU fd to current process
+ int ksu_install_fd(void);
++// Entry point for a reboot(2) the manager uses to open its driver fd. Called
++// from the kprobe on __arm64_sys_reboot, or from the syscall-table wrapper on
++// kernels hooked through the syscall table.
++int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
++			  void __user **arg);
+ // Install a KSU fd that authorizes operations required while starting su.
+ int ksu_install_su_fd(void);
+ bool ksu_is_su_session_fd(const struct file *filp);
