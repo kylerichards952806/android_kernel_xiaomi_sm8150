@@ -182,23 +182,29 @@ jobs:
               echo "downloading $CLANG_PREBUILT_DIR at $CLANG_PREBUILT_SHA ($CLANG_PREBUILT_REF)"
               rm -rf "$TOOLCHAIN"
               mkdir -p "$TOOLCHAIN"
-              # gitiles serves a directory as a tarball; the archive has a
-              # single top-level directory, hence --strip-components. It is
-              # generated on demand server-side, so give it room.
+              # gitiles serves a directory as a tarball when the path is part of
+              # the URL. It is generated on demand server-side, so allow time.
+              # The archive holds that directory's *contents* at its root, so
+              # there is no wrapping directory to strip.
               curl -fsSL --retry 5 --retry-delay 5 --max-time 2400 \
                 -o "$RUNNER_TEMP/clang.tar.gz" \
-                "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/${CLANG_PREBUILT_SHA}.tar.gz?path=${CLANG_PREBUILT_DIR}"
+                "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/${CLANG_PREBUILT_SHA}/${CLANG_PREBUILT_DIR}.tar.gz"
               ls -lh "$RUNNER_TEMP/clang.tar.gz"
-              # A wrong ?path= does not 404 — gitiles streams the entire
-              # repository instead — so check the archive really is the
-              # toolchain directory before spending time extracting it.
+              # Passing the directory as ?path= instead is silently ignored:
+              # gitiles then streams the *whole repository* (multiple GB, and it
+              # looks like a successful download). The first tar member gives
+              # that away cheaply, because this archive starts at
+              # AndroidVersion.txt while a repository archive starts at .gitignore.
               top=$(tar -tzf "$RUNNER_TEMP/clang.tar.gz" 2>/dev/null | head -1)
-              case "$top" in
-                "$CLANG_PREBUILT_DIR"/*) ;;
-                *) echo "::error::archive root is '$top', expected '$CLANG_PREBUILT_DIR/'; wrong ?path= or ref"; exit 1 ;;
-              esac
-              tar -xzf "$RUNNER_TEMP/clang.tar.gz" -C "$TOOLCHAIN" --strip-components=1
+              if [ "$top" != 'AndroidVersion.txt' ]; then
+                echo "::error::archive starts at '$top', expected AndroidVersion.txt; got the repository instead of $CLANG_PREBUILT_DIR"
+                exit 1
+              fi
+              tar -xzf "$RUNNER_TEMP/clang.tar.gz" -C "$TOOLCHAIN"
               rm -f "$RUNNER_TEMP/clang.tar.gz"
+              # AndroidVersion.txt is the prebuilt's own statement of what it is.
+              grep -qx '22\.0\.1' "$TOOLCHAIN/AndroidVersion.txt" \
+                || { echo '::error::unexpected clang version in AndroidVersion.txt'; cat "$TOOLCHAIN/AndroidVersion.txt"; exit 1; }
             else
               echo "restored $CLANG_PREBUILT_DIR from cache"
             fi
