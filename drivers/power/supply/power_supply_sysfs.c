@@ -202,6 +202,10 @@ static struct power_supply_attr power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(TIME_TO_FULL_AVG),
 	POWER_SUPPLY_ENUM_ATTR(TYPE),
 	POWER_SUPPLY_ATTR(USB_TYPE),
+#if defined(CONFIG_MACH_XIAOMI_SM8150)
+	POWER_SUPPLY_ATTR(REAL_FAKE),
+	POWER_SUPPLY_ATTR(PD_AUTHENTICATION),
+#endif
 	POWER_SUPPLY_ENUM_ATTR(SCOPE),
 	POWER_SUPPLY_ATTR(PRECHARGE_CURRENT),
 	POWER_SUPPLY_ATTR(CHARGE_TERM_CURRENT),
@@ -322,6 +326,12 @@ static ssize_t power_supply_show_property(struct device *dev,
 		ret = power_supply_show_usb_type(dev, psy->desc,
 						&value, buf);
 		break;
+#if defined(CONFIG_MACH_XIAOMI_SM8150)
+	case POWER_SUPPLY_PROP_REAL_FAKE:
+		ret = sprintf(buf, "%s\n",
+			      POWER_SUPPLY_TYPE_TEXT[value.intval]);
+		break;
+#endif
 #if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
 	/* battery verify properties start */
 	case POWER_SUPPLY_PROP_ROMID:
