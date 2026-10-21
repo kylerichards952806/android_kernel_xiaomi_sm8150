@@ -356,6 +356,25 @@ jobs:
           set -o pipefail
           make O=out $MAKE_ARGS -j"$(nproc)" Image dtbs 2>&1 | tee build.log
 
+      - name: Fetch packaging tools
+        if: success()
+        run: |
+          set -eu
+          # The packagers live in the branch that dispatched this run, but `ref`
+          # can point at an older tree that predates them — the vendor baseline
+          # does. Losing a finished 12-minute build to a missing helper script is
+          # pure waste, so borrow them from the workflow's own commit.
+          if [ -f .github/bootimg/mkbootimg_v2.py ] \
+             && [ -f .github/bootimg/mkdtimg.py ] \
+             && [ -f .github/bootimg/verify_images.py ]; then
+            echo 'packaging tools present in the checked-out tree'
+            exit 0
+          fi
+          echo "packaging tools missing from this tree; taking them from ${{ github.sha }}"
+          git fetch --depth=1 origin "${{ github.sha }}"
+          git checkout FETCH_HEAD -- .github/bootimg
+          ls -l .github/bootimg
+
       - name: Package boot.img and dtbo.img
         if: success()
         run: |
