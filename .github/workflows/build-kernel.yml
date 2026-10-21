@@ -133,11 +133,16 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 50
-          submodules: false
+          # drivers/kernelsu is the KernelSU-Next submodule. Its Kbuild derives
+          # KSU_VERSION from the submodule's own git history, so it needs a real
+          # clone with tags, not an empty directory.
+          submodules: recursive
 
       - name: Show what is being built
         run: |
           git log --oneline -1
+          echo "--- KernelSU-Next submodule ---"
+          git submodule status --recursive
           # CONFIG_LOCALVERSION_AUTO makes the kernel release carry -g<sha>, so
           # the build records which commit it came from.
           echo "LOCALVERSION_AUTO sha: $(git rev-parse --short HEAD)"
