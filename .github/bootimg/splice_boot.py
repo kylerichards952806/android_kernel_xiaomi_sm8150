@@ -94,12 +94,24 @@ def main():
         raise SystemExit("template has no AVB footer; refusing to build an image the "
                          "bootloader is known to reject")
 
+    # After the ramdisk the vendor image carries the appended device tree blob
+    # (FDT magic d00dfeed, ~397 KB on vayu) up to the footer. It is not part of
+    # the boot header, so nothing in mkbootimg knows about it — and zeroing it
+    # costs the kernel its DT, which the bootloader answers by dropping to
+    # fastboot. Carry it across verbatim.
+    old_tail_off = old_ramdisk_off + align(ramdisk_size, page_size)
+    tail = bytes(template[old_tail_off:limit])
+    if b"\xd0\x0d\xfe\xed" not in tail:
+        raise SystemExit("template has no appended DTB between the ramdisk and the "
+                         "footer; refusing to build an image without one")
+
     new_ramdisk_off = PAGE + align(len(kernel), page_size)
-    content_end = new_ramdisk_off + ramdisk_size
+    new_tail_off = new_ramdisk_off + align(ramdisk_size, page_size)
+    content_end = new_tail_off + len(tail)
     if content_end > limit:
         raise SystemExit(
-            f"kernel+ramdisk would end at {content_end:,}, past the vendor footer at "
-            f"{limit:,}; the template has {limit - content_end:+,} bytes of headroom")
+            f"kernel+ramdisk+dtb would end at {content_end:,}, past the vendor footer "
+            f"at {limit:,}; {content_end - limit:+,} bytes over")
 
     # The kernel header's own image_size must fit in what the boot header
     # advertises, or the kernel is loaded truncated.
@@ -107,10 +119,12 @@ def main():
         raise SystemExit("kernel is not a raw arm64 Image (magic is not 'ARMd')")
 
     out = bytearray(template)
-    # Clear the old kernel+ramdisk area so no stale payload survives a resize.
+    # Clear the old kernel+ramdisk+dtb area so no stale payload survives a resize,
+    # then lay the three pieces out again in order.
     out[PAGE:limit] = b"\0" * (limit - PAGE)
     out[PAGE:PAGE + len(kernel)] = kernel
     out[new_ramdisk_off:new_ramdisk_off + ramdisk_size] = ramdisk
+    out[new_tail_off:new_tail_off + len(tail)] = tail
 
     struct.pack_into("<I", out, 8, len(kernel))
     struct.pack_into("<I", out, 16, ramdisk_size)
@@ -120,6 +134,8 @@ def main():
     # longer describes the image, and the bootloader accepts exactly that.
     if out[-64:-60] != b"AVBf":
         raise SystemExit("internal error: AVB footer was not preserved")
+    if b"\xd0\x0d\xfe\xed" not in out[new_tail_off:new_tail_off + len(tail)]:
+        raise SystemExit("internal error: appended DTB was not written")
 
     with open(args.output, "wb") as f:
         f.write(out)
