@@ -305,6 +305,21 @@ copy_struct_from_user(void *dst, size_t ksize, const void __user *src,
 	return 0;
 }
 
+/*
+ * This tree backports copy_from/to_kernel_nofault() (upstream 5.8) onto 5.4,
+ * so code that checks LINUX_VERSION_CODE to decide whether the names exist
+ * still aliases them with a macro, e.g. KernelSU's
+ * '#define copy_to_kernel_nofault(dst, src, size) probe_kernel_write(...)'.
+ * Such a macro turns the declarations below into nonsense, so drop it first:
+ * after that the caller resolves to the real function, which is present.
+ */
+#ifdef copy_from_kernel_nofault
+#undef copy_from_kernel_nofault
+#endif
+#ifdef copy_to_kernel_nofault
+#undef copy_to_kernel_nofault
+#endif
+
 bool copy_from_kernel_nofault_allowed(const void *unsafe_src, size_t size);
 
 long copy_from_kernel_nofault(void *dst, const void *src, size_t size);
