@@ -359,6 +359,22 @@ EXPORT_SYMBOL_GPL(snd_soc_get_dai_substream);
 
 static const struct snd_soc_ops null_snd_soc_ops;
 
+/*
+ * Placeholder worker for runtimes which never get a real PCM.
+ *
+ * Links that only obtain a compress device (e.g. the msm front-end links,
+ * whose platform driver provides .compress_new) make soc_link_init() return
+ * as soon as the compress device is created, so soc_new_pcm() is never
+ * reached and the delayed_work it would normally initialize stays zeroed.
+ * snd_soc_flush_all_delayed_work() then calls flush_delayed_work() on a
+ * work_struct with a NULL func, which trips WARN_ON(!work->func) in
+ * __flush_work() on every system suspend. Give every runtime a valid func
+ * here; soc_new_pcm() still installs the real worker for PCM links.
+ */
+static void soc_pcm_runtime_noop_work(struct work_struct *work)
+{
+}
+
 static struct snd_soc_pcm_runtime *soc_new_pcm_runtime(
 	struct snd_soc_card *card, struct snd_soc_dai_link *dai_link)
 {
@@ -369,6 +385,7 @@ static struct snd_soc_pcm_runtime *soc_new_pcm_runtime(
 		return NULL;
 
 	INIT_LIST_HEAD(&rtd->component_list);
+	INIT_DELAYED_WORK(&rtd->delayed_work, soc_pcm_runtime_noop_work);
 	rtd->card = card;
 	rtd->dai_link = dai_link;
 	if (!rtd->dai_link->ops)
