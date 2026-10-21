@@ -279,7 +279,9 @@ jobs:
               echo "# android-version: $(head -1 "$TOOLCHAIN/AndroidVersion.txt" 2>/dev/null)"
               echo "# build-manifest: $(ls "$TOOLCHAIN"/manifest_*.xml 2>/dev/null | head -1 | xargs -r basename)"
             } > toolchain-manifest.txt
-            ( cd "$TOOLCHAIN" && find . -type f -print0 \
+            # %P keeps paths relative without a leading ./, which is what
+            # compare-toolchain.sh matches on.
+            ( cd "$TOOLCHAIN" && find . -type f -printf '%P\\0' \
                 | LC_ALL=C sort -z | xargs -0 -r sha256sum ) >> toolchain-manifest.txt
             echo "toolchain manifest: $(grep -vc '^#' toolchain-manifest.txt) files"
           fi

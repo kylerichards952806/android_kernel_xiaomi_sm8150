@@ -73,12 +73,20 @@ manifest_of_dir() { ls "$1"/manifest_*.xml 2>/dev/null | head -1 | xargs -r base
 
 inventory() {
   # $1 = dir. "sha256  relative/path" for every regular file, sorted.
+  # sha256sum marks binary-mode input with a '*' after the two spaces; strip it
+  # so a manifest written on one platform compares equal to a tree read on
+  # another.
   ( cd "$1" && find . -type f -printf '%P\n' 2>/dev/null | LC_ALL=C sort | while IFS= read -r f; do
       printf '%s  %s\n' "$(sha256sum "$f" 2>/dev/null | cut -d' ' -f1)" "$f"
-    done )
+    done ) | sed -E 's/^([0-9a-f]{64}) \*/\1  /'
 }
 
-manifest_inventory() { grep -v '^#' "$REF_PATH" | sed 's|  \./|  |' ; }
+manifest_inventory() {
+  # Normalise the leading ./ that `find .` produces and the '*' binary marker,
+  # so paths from a manifest and paths from a live directory compare as the
+  # same string.
+  grep -v '^#' "$REF_PATH" | sed -E -e 's|^(   )\./|\1|' -e 's/^([0-9a-f]{64}) \*/\1  /' -e 's|  \./|  |'
+}
 
 # ------------------------------------------------------------------ compare --
 hr
@@ -111,13 +119,18 @@ fi
 
 hr
 log "key binaries"
-if [ "$REF_MANIFEST" = 1 ]; then manifest_inventory > "${TMPDIR:-/tmp}/ref-inv.$$" 2>/dev/null || true; fi
+# One normalised view of the reference, used by the per-file lookups below.
+REF_INV=""
+if [ "$REF_MANIFEST" = 1 ]; then
+  REF_INV="$(mktemp)"
+  manifest_inventory > "$REF_INV"
+fi
 for f in bin/clang bin/ld.lld bin/llvm-objcopy; do
   r="$(sha256sum "$ROM_PATH/$f" 2>/dev/null | cut -d' ' -f1)"
   printf '  %-18s ROM %s\n' "$f" "${r:-<missing>}"
   if [ -n "$REF_PATH" ]; then
     if [ "$REF_MANIFEST" = 1 ]; then
-      s="$(grep -E "  ${f//\//\\/}$" "$REF_PATH" | cut -d' ' -f1 | head -1)"
+      s="$(awk -v p="$f" '$2 == p {print $1; exit}' "$REF_INV")"
     else
       s="$(sha256sum "$REF_PATH/$f" 2>/dev/null | cut -d' ' -f1)"
     fi
@@ -132,6 +145,7 @@ if [ -z "$REF_PATH" ]; then
   log "Skipping the inventory diff."
   exit 0
 fi
+[ -n "$REF_INV" ] && rm -f "$REF_INV"
 
 hr
 log "full inventory diff (sha256 of every file)"
@@ -147,8 +161,10 @@ rom_n=$(wc -l < "$TMPD/rom.txt"); ref_n=$(wc -l < "$TMPD/ref.txt")
 log "  files: ROM $rom_n, REF $ref_n"
 same=$(comm -12 "$TMPD/rom.txt" "$TMPD/ref.txt" | wc -l)
 log "  identical (path+hash): $same"
-missing="$(comm -23 <(cut -d'  ' -f2- "$TMPD/rom.txt" | sort) <(cut -d'  ' -f2- "$TMPD/ref.txt" | sort) | wc -l)"
-extra="$(comm -13 <(cut -d'  ' -f2- "$TMPD/rom.txt" | sort) <(cut -d'  ' -f2- "$TMPD/ref.txt" | sort) | wc -l)"
+rom_paths="$(awk '{print $2}' "$TMPD/rom.txt" | LC_ALL=C sort)"
+ref_paths="$(awk '{print $2}' "$TMPD/ref.txt" | LC_ALL=C sort)"
+missing="$(comm -23 <(printf '%s\n' "$rom_paths") <(printf '%s\n' "$ref_paths") | wc -l)"
+extra="$(comm -13 <(printf '%s\n' "$rom_paths") <(printf '%s\n' "$ref_paths") | wc -l)"
 log "  paths only in ROM: $missing, paths only in REF: $extra"
 if cmp -s "$TMPD/rom.txt" "$TMPD/ref.txt"; then
   log "  => the two trees are byte-for-byte identical"
