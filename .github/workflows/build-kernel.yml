@@ -51,12 +51,12 @@ on:
       werror:
         description: >-
           Keep the tree's own CONFIG_CC_WERROR=y instead of downgrading warnings
-          to non-fatal. The vendor tree sets it; the build only relaxes it to
-          answer 'does this image boot'. A strict run either proves the tree is
-          warning-clean with the matched compiler or lists every warning to fix,
-          so it is a diagnostic, not the artifact build.
+          to non-fatal. Default now that it is proven: run 39595908503 built the
+          whole tree with CC_WERROR=y and clang-r596125 and emitted zero
+          warnings. Set false only to bisect a boot problem where a warning from
+          unrelated vendor code would block the build.
         required: false
-        default: false
+        default: true
         type: boolean
   push:
     branches:
@@ -340,10 +340,10 @@ jobs:
           # The tree sets CONFIG_CC_WERROR=y. It used to be dropped here on the
           # theory that a slightly different LLVM sub-revision would turn a
           # warning into a build failure — but the toolchain now matches the
-          # vendor's exactly, and a warning in this tree is a real defect, not
-          # noise from a stray compiler. werror=true keeps the vendor policy and
-          # turns the run into a warning census; the default stays relaxed until
-          # that census comes back clean.
+          # vendor's exactly, and a strict build (run 39595908503, werror=true)
+          # compiled 3961 objects with CC_WERROR=y and produced no warnings at
+          # all. So the vendor policy is the default again: a warning here is a
+          # real defect. werror=false remains for bisecting a boot failure.
           if [ "${{ inputs.werror }}" = 'true' ]; then
             echo "strict build: keeping CONFIG_CC_WERROR=y"
           else
