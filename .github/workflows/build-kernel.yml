@@ -39,6 +39,15 @@ on:
         required: false
         default: ''
         type: string
+      toolchain_fallback:
+        description: >-
+          If the vendor clang cannot be downloaded (gitiles slow or unreachable),
+          continue with Ubuntu LLVM 18 instead of failing the job. The artifact
+          name records the fallback, so such a kernel is never mistaken for a
+          vendor-compiler build.
+        required: false
+        default: true
+        type: boolean
   push:
     branches:
       - MI_SM8150_5.4
@@ -137,9 +146,11 @@ jobs:
             python3 make gcc file \
             binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu
 
-      # The prebuilt is ~400 MB extracted, so it is cached across runs. The key
-      # pins the exact gitiles ref, so switching compiler versions is a new cache
-      # entry rather than a stale hit.
+      # The prebuilt is ~2.4 GB extracted and is served by gitiles as an archive
+      # generated on demand, so caching it is what keeps a build from touching
+      # the network at all: the first green run on a runner populates this, every
+      # later run restores it. The key pins the exact commit, so switching the
+      # compiler is a new cache entry rather than a stale hit.
       - name: Restore Android clang ${{ env.CLANG_PREBUILT_DIR }}
         if: ${{ (inputs.toolchain || 'android-clang-22') != 'llvm-18' }}
         id: clang-cache
@@ -178,53 +189,34 @@ jobs:
             CC_CMD=clang LD_CMD=ld.lld
 
             if [ ! -x "$BIN/clang" ]; then
-              echo "downloading $CLANG_PREBUILT_DIR at $CLANG_PREBUILT_SHA ($CLANG_PREBUILT_REF)"
-              rm -rf "$TOOLCHAIN"
-              mkdir -p "$TOOLCHAIN"
-              # gitiles serves a directory as a tarball when the path is part of
-              # the URL, and builds it on demand, so a single request can stall
-              # or drop mid-stream. Resume from whatever has arrived instead of
-              # starting over: --continue-at - plus a stall detector means a slow
-              # or briefly dead connection costs time, not the job. Four attempts
-              # covering ~45 minutes of a genuinely unreachable server; after one
-              # successful run the cache above means this whole branch is skipped.
-              ARCHIVE="$RUNNER_TEMP/clang.tar.gz"
-              ARCHIVE_URL="https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/${CLANG_PREBUILT_SHA}/${CLANG_PREBUILT_DIR}.tar.gz"
-              for attempt in 1 2 3 4; do
-                if curl -fL --continue-at - \
-                     --retry 3 --retry-delay 5 --retry-all-errors \
-                     --connect-timeout 30 --max-time 1800 \
-                     --speed-limit 1024 --speed-time 180 \
-                     -o "$ARCHIVE" "$ARCHIVE_URL"; then
-                  break
-                fi
-                echo "::warning::download attempt $attempt failed at $(stat -c%s "$ARCHIVE" 2>/dev/null || echo 0) bytes; resuming"
-                sleep $((attempt * 15))
-              done
-              if [ ! -s "$ARCHIVE" ]; then
-                echo "::error::could not fetch $ARCHIVE_URL and no cached copy of $CLANG_PREBUILT_DIR exists"
-                echo '::error::re-run the job once the network recovers, or dispatch with toolchain=llvm-18 to keep the artifacts flowing (that build is not the vendor compiler)'
+              echo "fetching $CLANG_PREBUILT_DIR (build $CLANG_EXPECT_BUILD) at $CLANG_PREBUILT_SHA"
+              rc=0
+              # scripts/fetch-toolchain.sh is deliberately outside the workflow:
+              # it is the only step that depends on a third party, so it has to be
+              # runnable (and testable) on a workstation. Exit 75 means the network
+              # was exhausted, which is the one failure worth continuing through;
+              # 65 means wrong content arrived and must not be papered over.
+              DEST="$TOOLCHAIN" \
+              ATTEMPTS=3 \
+              EXPECT_ANDROID_VERSION="$CLANG_EXPECT_ANDROID_VERSION" \
+              EXPECT_BUILD="$CLANG_EXPECT_BUILD" \
+                bash scripts/fetch-toolchain.sh || rc=$?
+
+              if [ "$rc" -eq 75 ] && [ "${{ inputs.toolchain_fallback }}" = "true" ]; then
+                echo "::warning title=Toolchain download failed::gitiles did not serve $CLANG_PREBUILT_DIR; building with Ubuntu LLVM 18 instead. Artifact name is marked llvm18-fallback and is NOT the vendor compiler."
+                TOOLCHAIN=/usr/lib/llvm-18
+                BIN="$TOOLCHAIN/bin"
+                sudo apt-get install -y --no-install-recommends clang-18 lld-18 llvm-18
+                for t in clang ld.lld llvm-ar llvm-nm llvm-objcopy llvm-objdump \
+                         llvm-strip llvm-readelf llvm-size llvm-symbolizer \
+                         llvm-profdata llvm-as opt llc; do
+                  [ -e "$BIN/$t" ] || sudo ln -sf "/usr/bin/$t-18" "$BIN/$t"
+                done
+                TOOLCHAIN_FALLBACK=1
+              elif [ "$rc" -ne 0 ]; then
+                echo '::error::the vendor toolchain could not be installed (see the messages above); refusing to build with a different compiler silently. Re-run once the network recovers, or dispatch with toolchain=llvm-18 knowingly.'
                 exit 1
               fi
-              ls -lh "$ARCHIVE"
-              # Passing the directory as ?path= instead is silently ignored:
-              # gitiles then streams the *whole repository* (multiple GB, and it
-              # looks like a successful download). The first tar member gives
-              # that away cheaply, because this archive starts at
-              # AndroidVersion.txt while a repository archive starts at .gitignore.
-              top=$(tar -tzf "$RUNNER_TEMP/clang.tar.gz" 2>/dev/null | head -1)
-              if [ "$top" != 'AndroidVersion.txt' ]; then
-                echo "::error::archive starts at '$top', expected AndroidVersion.txt; got the repository instead of $CLANG_PREBUILT_DIR"
-                exit 1
-              fi
-              tar -xzf "$ARCHIVE" -C "$TOOLCHAIN"
-              rm -f "$ARCHIVE"
-              # AndroidVersion.txt is the prebuilt's own statement of what it is,
-              # and manifest_<build>.xml ties it to the vendor's build number.
-              grep -qx "$CLANG_EXPECT_ANDROID_VERSION" "$TOOLCHAIN/AndroidVersion.txt" \
-                || { echo '::error::unexpected clang version in AndroidVersion.txt'; cat "$TOOLCHAIN/AndroidVersion.txt"; exit 1; }
-              [ -f "$TOOLCHAIN/manifest_$CLANG_EXPECT_BUILD.xml" ] \
-                || { echo "::error::expected manifest_$CLANG_EXPECT_BUILD.xml (the vendor's build); got: $(ls "$TOOLCHAIN"/manifest_*.xml 2>/dev/null)"; exit 1; }
             else
               echo "restored $CLANG_PREBUILT_DIR from cache"
             fi
@@ -236,6 +228,18 @@ jobs:
                 || echo '::warning::could not install legacy terminfo packages'
             fi
           fi
+
+          # Record which compiler actually ended up in use, so the artifact can
+          # say so without anyone having to read the log.
+          if [ "${TOOLCHAIN_FALLBACK:-0}" = 1 ]; then
+            TOOLCHAIN_ID=llvm18-fallback
+          elif [ "${{ inputs.toolchain || 'android-clang-22' }}" = "llvm-18" ]; then
+            TOOLCHAIN_ID=llvm-18
+          else
+            TOOLCHAIN_ID=android-clang-22
+          fi
+          echo "TOOLCHAIN_ID=$TOOLCHAIN_ID" >> "$GITHUB_ENV"
+          echo "TOOLCHAIN_FALLBACK=${TOOLCHAIN_FALLBACK:-0}" >> "$GITHUB_ENV"
 
           # Make the whole toolchain reachable by bare name: kbuild's LTO/CFI
           # rules call llvm-nm/llvm-objcopy/llvm-ar off $PATH, not $(NM) etc.
@@ -255,7 +259,8 @@ jobs:
           # Fail loudly if the download resolved to the wrong compiler: the whole
           # point of this job is to match the vendor's clang 22.0.2 (build
           # 15071444) rather than whichever LLVM the runner happens to ship.
-          if [ "${{ inputs.toolchain || 'android-clang-22' }}" != "llvm-18" ]; then
+          # Skipped only on the explicit, clearly labelled fallback path above.
+          if [ "${{ inputs.toolchain || 'android-clang-22' }}" != "llvm-18" ] && [ "${TOOLCHAIN_FALLBACK:-0}" != 1 ]; then
             head1=$("$BIN/clang" --version | head -1)
             echo "$head1" | grep -q "$CLANG_EXPECT_VERSION" \
               || { echo "::error::expected '$CLANG_EXPECT_VERSION', got: $head1"; exit 1; }
@@ -264,6 +269,19 @@ jobs:
             [ -x "$BIN/ld.lld" ] || { echo '::error::ld.lld missing'; exit 1; }
             "$BIN/ld.lld" --version
             echo "toolchain: $head1"
+
+            # A hash of every file in the compiler, shipped with the artifacts.
+            # That lets a toolchain found inside a ROM dump (a 2.4 GB tree nobody
+            # wants to move around) be compared against the one that actually
+            # built this kernel: see scripts/compare-toolchain.sh.
+            {
+              echo "# clang: $head1"
+              echo "# android-version: $(head -1 "$TOOLCHAIN/AndroidVersion.txt" 2>/dev/null)"
+              echo "# build-manifest: $(ls "$TOOLCHAIN"/manifest_*.xml 2>/dev/null | head -1 | xargs -r basename)"
+            } > toolchain-manifest.txt
+            ( cd "$TOOLCHAIN" && find . -type f -print0 \
+                | LC_ALL=C sort -z | xargs -0 -r sha256sum ) >> toolchain-manifest.txt
+            echo "toolchain manifest: $(grep -vc '^#' toolchain-manifest.txt) files"
           fi
 
       - name: Configure
@@ -343,6 +361,7 @@ jobs:
           mkdir -p dist
           cp out/arch/arm64/boot/Image dist/Image
           cp out/.config dist/kernel.config
+          cp toolchain-manifest.txt dist/ 2>/dev/null || true
 
           # --- boot.img ---------------------------------------------------
           # vayu has no vendor_boot partition, so this is a header v2 boot
@@ -391,7 +410,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-arm64-${{ inputs.config || 'vayu' }}${{ inputs.variant && inputs.variant != 'stock' && format('-{0}', inputs.variant) || '' }}-${{ inputs.toolchain || 'android-clang-22' }}
+          name: kernel-arm64-${{ inputs.config || 'vayu' }}${{ inputs.variant && inputs.variant != 'stock' && format('-{0}', inputs.variant) || '' }}-${{ env.TOOLCHAIN_ID }}
           path: dist/
           if-no-files-found: error
           retention-days: 30
