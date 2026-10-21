@@ -101,9 +101,19 @@ def main():
     # fastboot. Carry it across verbatim.
     old_tail_off = old_ramdisk_off + align(ramdisk_size, page_size)
     tail = bytes(template[old_tail_off:limit])
-    if b"\xd0\x0d\xfe\xed" not in tail:
+    magic = tail.find(b"\xd0\x0d\xfe\xed")
+    if magic < 0:
         raise SystemExit("template has no appended DTB between the ramdisk and the "
                          "footer; refusing to build an image without one")
+    # Keep the DTB and nothing else. What follows it up to the vbmeta blob is
+    # zero padding (397,787 B on vayu), and carrying that padding across made a
+    # kernel more than a page larger than the vendor's fail the fit check below
+    # even though the partition had plenty of room. The DTB's own totalsize
+    # field says where it ends, so this cannot clip the blob.
+    dtb_size = struct.unpack_from(">I", tail, magic + 4)[0]
+    if dtb_size <= 0 or magic + dtb_size > len(tail):
+        raise SystemExit(f"appended DTB claims an impossible size: {dtb_size}")
+    tail = tail[:magic + dtb_size]
 
     new_ramdisk_off = PAGE + align(len(kernel), page_size)
     new_tail_off = new_ramdisk_off + align(ramdisk_size, page_size)
