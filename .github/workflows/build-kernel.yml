@@ -22,6 +22,18 @@ on:
           - stock
           - no-lto
           - no-lto-no-reloc
+      toolchain:
+        description: >-
+          'android-clang-22' is the Android prebuilt LLVM 22 toolchain, matching
+          the major version the vendor built this tree with (see
+          CONFIG_CC_VERSION_TEXT in the device's own config).
+          'llvm-18' keeps the Ubuntu toolchain as a control.
+        required: false
+        default: 'android-clang-22'
+        type: choice
+        options:
+          - android-clang-22
+          - llvm-18
       ref:
         description: 'Commit, branch or tag to build (default: the dispatched ref)'
         required: false
@@ -45,19 +57,28 @@ concurrency:
 env:
   # The kernel Makefile does `CC = $(CROSS_COMPILE)gcc`, and a plain Makefile
   # assignment beats an environment variable, so the toolchain has to be
-  # passed as a make *argument* ($(MAKE_ARGS)), not exported here.
-  MAKE_ARGS: >-
-    ARCH=arm64
-    CC=clang-18
-    LD=ld.lld-18
-    AR=llvm-ar-18
-    NM=llvm-nm-18
-    OBJCOPY=llvm-objcopy-18
-    OBJDUMP=llvm-objdump-18
-    STRIP=llvm-strip-18
-    READELF=llvm-readelf-18
-    CROSS_COMPILE=aarch64-linux-gnu-
-    CLANG_TRIPLE=aarch64-linux-gnu-
+  # passed as a make *argument*. MAKE_ARGS is therefore computed in the
+  # toolchain step once the compiler location is known, and exported through
+  # $GITHUB_ENV.
+
+  # The device's own kernel config records the compiler the vendor used:
+  #   CONFIG_CC_VERSION_TEXT="Android (15071444, +pgo, +bolt, +lto, +mlgo,
+  #     based on r596125) clang version 22.0.2"
+  # LLVM 22 is what matters here: that release changed how the arm64 startup
+  # path and its relocation tables are emitted, and those run before the console
+  # exists, so a mismatch is silent rather than a readable crash.
+  #
+  # Build 15071444 / r596125 itself is NOT published: AOSP has a
+  # mirror-goog-llvm-r596125-release branch, but it carries no clang-r596125
+  # directory (it tops out at clang-r584948b, build 14863223, clang 22.0.1).
+  # That directory is the newest public LLVM 22 prebuilt, so it is what is used.
+  # If a clang-r596125 directory ever appears, change only these three values.
+  CLANG_PREBUILT_REF: mirror-goog-llvm-r596125-release
+  # Commit that ref pointed at when this was written, so the archive URL and the
+  # cache key stay immutable even if upstream force-pushes the branch.
+  CLANG_PREBUILT_SHA: 05caf14d5f846c9955d1718cd95cb6ee59a22eac
+  CLANG_PREBUILT_DIR: clang-r584948b
+  CLANG_EXPECT_VERSION: clang version 22.0.1
   KBUILD_BUILD_USER: duckyduck
   KBUILD_BUILD_HOST: metonator.dev
   # Taken verbatim from the vayu device's own boot.img header, so the image we
@@ -71,10 +92,15 @@ env:
 
 jobs:
   build:
-    name: arm64 ${{ inputs.config || 'vayu' }}${{ inputs.variant && inputs.variant != 'stock' && format(' [{0}]', inputs.variant) || '' }}
-    # ubuntu-24.04 ships LLVM 18. LLVM 14's ld.lld cannot resolve the ABS32
-    # relocations that CONFIG_MODVERSIONS emits for the __crc_* symbols, which
-    # fails only at the final vmlinux link.
+    name: >-
+      arm64 ${{ inputs.config || 'vayu' }}${{ inputs.variant && inputs.variant != 'stock' && format(' [{0}]', inputs.variant) || '' }}
+      (${{ inputs.toolchain || 'android-clang-22' }})
+    # ubuntu-24.04 is only the host; the compiler itself is the Android prebuilt
+    # named above. It is chosen over ubuntu-24.04's LLVM 18 because LLVM 18's
+    # ld.lld cannot resolve the ABS32 relocations CONFIG_MODVERSIONS emits for
+    # the __crc_* symbols, failing at the final vmlinux link, and because a
+    # kernel is only known-good against the compiler that produced the working
+    # image on the device.
     runs-on: ubuntu-24.04
     timeout-minutes: 350
 
@@ -103,29 +129,116 @@ jobs:
           fi
           free -h
 
-      - name: Install toolchain
+      - name: Install build dependencies
         run: |
+          set -eu
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             bc bison flex cpio rsync libssl-dev libelf-dev \
-            python3 make gcc \
-            clang-18 lld-18 llvm-18 \
+            python3 make gcc file \
             binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu
-          # The CFI/LTO link step shells out to unversioned llvm-nm/llvm-objcopy
-          # rather than $(NM)/$(OBJCOPY), so the versioned binaries alone are
-          # not enough.
-          for t in clang clang++ ld.lld llvm-ar llvm-nm llvm-objcopy llvm-objdump \
-                   llvm-readelf llvm-strip llvm-size llvm-symbolizer llvm-cov \
-                   llvm-profdata llvm-as llvm-link llvm-config opt llc; do
-            if [ -e "/usr/bin/$t-18" ]; then
-              sudo ln -sf "/usr/bin/$t-18" "/usr/local/bin/$t"
+
+      # The prebuilt is ~400 MB extracted, so it is cached across runs. The key
+      # pins the exact gitiles ref, so switching compiler versions is a new cache
+      # entry rather than a stale hit.
+      - name: Restore Android clang ${{ env.CLANG_PREBUILT_DIR }}
+        if: ${{ (inputs.toolchain || 'android-clang-22') != 'llvm-18' }}
+        id: clang-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.tool_cache }}/${{ env.CLANG_PREBUILT_DIR }}
+          key: android-${{ env.CLANG_PREBUILT_DIR }}-${{ env.CLANG_PREBUILT_SHA }}-v1
+
+      - name: Install toolchain
+        run: |
+          set -eu
+          if [ "${{ inputs.toolchain || 'android-clang-22' }}" = "llvm-18" ]; then
+            echo '::notice::using ubuntu LLVM 18 (control build)'
+            sudo apt-get install -y --no-install-recommends clang-18 lld-18 llvm-18
+            TOOLCHAIN=/usr/lib/llvm-18
+            # That directory already holds unversioned binaries, which is also
+            # what kbuild's LTO/CFI link rules look up on $PATH.
+            BIN="$TOOLCHAIN/bin"
+            CC_CMD=clang LD_CMD=ld.lld
+            AR_CMD=llvm-ar NM_CMD=llvm-nm
+            OBJCOPY_CMD=llvm-objcopy OBJDUMP_CMD=llvm-objdump
+            STRIP_CMD=llvm-strip READELF_CMD=llvm-readelf
+            # lld-18 installs into /usr/bin as ld.lld-18; fill in whatever is
+            # missing so both $BIN/$CC_CMD and the LTO link's $PATH lookups work.
+            for t in clang ld.lld llvm-ar llvm-nm llvm-objcopy llvm-objdump \
+                     llvm-strip llvm-readelf llvm-size llvm-symbolizer \
+                     llvm-profdata llvm-as opt llc; do
+              [ -e "$BIN/$t" ] || sudo ln -sf "/usr/bin/$t-18" "$BIN/$t"
+            done
+          else
+            TOOLCHAIN="$RUNNER_TOOL_CACHE/$CLANG_PREBUILT_DIR"
+            BIN="$TOOLCHAIN/bin"
+            AR_CMD=llvm-ar NM_CMD=llvm-nm
+            OBJCOPY_CMD=llvm-objcopy OBJDUMP_CMD=llvm-objdump
+            STRIP_CMD=llvm-strip READELF_CMD=llvm-readelf
+            CC_CMD=clang LD_CMD=ld.lld
+
+            if [ ! -x "$BIN/clang" ]; then
+              echo "downloading $CLANG_PREBUILT_DIR at $CLANG_PREBUILT_SHA ($CLANG_PREBUILT_REF)"
+              rm -rf "$TOOLCHAIN"
+              mkdir -p "$TOOLCHAIN"
+              # gitiles serves a directory as a tarball; the archive has a
+              # single top-level directory, hence --strip-components. It is
+              # generated on demand server-side, so give it room.
+              curl -fsSL --retry 5 --retry-delay 5 --max-time 2400 \
+                -o "$RUNNER_TEMP/clang.tar.gz" \
+                "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/${CLANG_PREBUILT_SHA}.tar.gz?path=${CLANG_PREBUILT_DIR}"
+              ls -lh "$RUNNER_TEMP/clang.tar.gz"
+              # A wrong ?path= does not 404 — gitiles streams the entire
+              # repository instead — so check the archive really is the
+              # toolchain directory before spending time extracting it.
+              top=$(tar -tzf "$RUNNER_TEMP/clang.tar.gz" 2>/dev/null | head -1)
+              case "$top" in
+                "$CLANG_PREBUILT_DIR"/*) ;;
+                *) echo "::error::archive root is '$top', expected '$CLANG_PREBUILT_DIR/'; wrong ?path= or ref"; exit 1 ;;
+              esac
+              tar -xzf "$RUNNER_TEMP/clang.tar.gz" -C "$TOOLCHAIN" --strip-components=1
+              rm -f "$RUNNER_TEMP/clang.tar.gz"
+            else
+              echo "restored $CLANG_PREBUILT_DIR from cache"
             fi
-          done
-          echo "--- versions ---"
-          clang-18 --version | head -2
-          ld.lld-18 --version
-          llvm-nm --version | head -1
+
+            if ldd "$BIN/clang" 2>&1 | grep -q 'not found'; then
+              echo '::warning::prebuilt clang has unresolved shared libraries:'
+              ldd "$BIN/clang" | grep 'not found' || true
+              sudo apt-get install -y --no-install-recommends libtinfo5 libncurses5 2>/dev/null \
+                || echo '::warning::could not install legacy terminfo packages'
+            fi
+          fi
+
+          # Make the whole toolchain reachable by bare name: kbuild's LTO/CFI
+          # rules call llvm-nm/llvm-objcopy/llvm-ar off $PATH, not $(NM) etc.
+          echo "PATH=$BIN:$PATH" >> "$GITHUB_ENV"
+          echo "TOOLCHAIN=$TOOLCHAIN" >> "$GITHUB_ENV"
+
+          # One line, space separated: make matches the last assignment of a
+          # variable, so later flags override anything inherited.
+          echo "MAKE_ARGS=ARCH=arm64 CC=$BIN/$CC_CMD LD=$BIN/$LD_CMD AR=$BIN/$AR_CMD NM=$BIN/$NM_CMD OBJCOPY=$BIN/$OBJCOPY_CMD OBJDUMP=$BIN/$OBJDUMP_CMD STRIP=$BIN/$STRIP_CMD READELF=$BIN/$READELF_CMD CROSS_COMPILE=aarch64-linux-gnu- CLANG_TRIPLE=aarch64-linux-gnu-" >> "$GITHUB_ENV"
+
+          echo '--- versions ---'
+          "$BIN/$CC_CMD" --version | head -2
+          "$BIN/$LD_CMD" --version | head -1
+          "$BIN/llvm-nm" --version | head -1
           aarch64-linux-gnu-ld --version | head -1
+
+          # Fail loudly if the download resolved to the wrong compiler: the whole
+          # point of this job is to match the vendor's clang 22.0.2 (build
+          # 15071444) rather than whichever LLVM the runner happens to ship.
+          if [ "${{ inputs.toolchain || 'android-clang-22' }}" != "llvm-18" ]; then
+            head1=$("$BIN/clang" --version | head -1)
+            echo "$head1" | grep -q "$CLANG_EXPECT_VERSION" \
+              || { echo "::error::expected '$CLANG_EXPECT_VERSION', got: $head1"; exit 1; }
+            echo "$head1" | grep -q 'Android' \
+              || { echo "::error::not an Android prebuilt: $head1"; exit 1; }
+            [ -x "$BIN/ld.lld" ] || { echo '::error::ld.lld missing'; exit 1; }
+            "$BIN/ld.lld" --version
+            echo "toolchain: $head1"
+          fi
 
       - name: Configure
         run: |
@@ -144,11 +257,12 @@ jobs:
           grep -q '^CONFIG_ARCH_QCOM=y' out/.config \
             || { echo '::error::ARCH_QCOM not enabled; the defconfig base was lost'; exit 1; }
 
-          # The tree sets CONFIG_CC_WERROR=y and was built by the vendor with
-          # clang 22. Several pre-existing constructs in vendor code warn under
-          # clang-14 (mm/slub.c %zu/%pS, kernel/sched/walt/walt.c %llu). They
-          # are not in code this repo touches, so downgrade warnings to
-          # warnings; real compile errors still fail the build.
+          # The tree sets CONFIG_CC_WERROR=y. The compiler now matches the
+          # vendor's, so the vendor's own code is expected to be warning-clean,
+          # but a warning introduced by a slightly different LLVM sub-revision
+          # would fail the build for a reason unrelated to whether it boots —
+          # which is the question being answered. Warnings stay warnings; real
+          # compile errors still fail.
           scripts/config --file out/.config -d CC_WERROR
           # Drop stale generated config so the next make cannot inherit the
           # previous CONFIG_CC_WERROR=y through include/config/auto.conf.
@@ -251,7 +365,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-arm64-${{ inputs.config || 'vayu' }}${{ inputs.variant && inputs.variant != 'stock' && format('-{0}', inputs.variant) || '' }}
+          name: kernel-arm64-${{ inputs.config || 'vayu' }}${{ inputs.variant && inputs.variant != 'stock' && format('-{0}', inputs.variant) || '' }}-${{ inputs.toolchain || 'android-clang-22' }}
           path: dist/
           if-no-files-found: error
           retention-days: 30
