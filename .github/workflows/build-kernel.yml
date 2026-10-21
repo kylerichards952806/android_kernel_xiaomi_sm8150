@@ -486,6 +486,20 @@ jobs:
           (cd dist && sha256sum * > SHA256SUMS.txt)
           ls -lh dist
 
+      - name: Package TWRP flashable zip
+        if: success()
+        run: |
+          set -eu
+          VERSION="5.4.302-vayu-kyler084${LOCALVERSION}"
+          python3 .github/twrp/make_twrp_zip.py --dist dist --version "$VERSION" \
+            --out "dist/vayu-kernel-${VERSION}.zip"
+          # Rewrite the checksums now that the zip exists, and list the files
+          # explicitly: `sha256sum *` also hashes the checksum file itself,
+          # because the redirection creates it before the glob is expanded.
+          (cd dist && sha256sum boot.img dtbo.img Image kernel.config \
+              "vayu-kernel-${VERSION}.zip" > SHA256SUMS.txt)
+          ls -lh dist
+
       - name: Verify packaged images
         if: success()
         run: python3 .github/bootimg/verify_images.py dist
@@ -570,6 +584,7 @@ jobs:
             echo
             echo '- `boot.img` — `fastboot flash boot boot.img` (128 MiB, spliced into the vendor container with its AVB footer and appended DTB intact)'
             echo '- `dtbo.img` — `fastboot flash dtbo dtbo.img`'
+            echo '- `vayu-kernel-*.zip` — TWRP flashable: writes both partitions and keeps the previous pair on /sdcard'
             echo '- `kernel.config` — the exact config this kernel was built with'
             echo '- `SHA256SUMS.txt` — verify before flashing'
             echo
@@ -584,5 +599,6 @@ jobs:
           gh release create "$TAG" \
             --title "vayu ${VERSION} · ${ROOT} · ${DATE}" \
             --notes-file notes.md \
-            dist/boot.img dist/dtbo.img dist/SHA256SUMS.txt dist/kernel.config build.log
+            dist/boot.img dist/dtbo.img dist/*.zip dist/SHA256SUMS.txt \
+            dist/kernel.config build.log
           echo "published $TAG"

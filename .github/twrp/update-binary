@@ -1,0 +1,62 @@
+#!/sbin/sh
+#
+# TWRP installer for a vayu (Xiaomi SM8150) kernel.
+#
+# TWRP runs this script as `update-binary <api> <outfd> <zipfile>`; it writes
+# the boot and dtbo partitions directly from the images in the zip, so it does
+# not matter what ROM is installed or whether the device is A/B (vayu is not).
+# The previous images are copied to /sdcard first, because a kernel that does
+# not boot is otherwise only recoverable with fastboot.
+
+OUTFD="$2"
+ZIPFILE="$3"
+VERSION="@VERSION@"
+
+ui_print() {
+  echo "ui_print $1\nui_print" >&$OUTFD
+}
+
+abort() {
+  ui_print "! $1"
+  exit 1
+}
+
+TMP=/tmp/vayu-kernel
+BACKUP=/sdcard/vayu-kernel-backup-$VERSION
+BOOT=/dev/block/bootdevice/by-name/boot
+DTBO=/dev/block/bootdevice/by-name/dtbo
+
+ui_print "--------------------------------"
+ui_print " vayu kernel $VERSION"
+ui_print "--------------------------------"
+
+[ -f "$ZIPFILE" ] || abort "cannot read the zip ($ZIPFILE)"
+
+[ -e "$BOOT" ] || BOOT=$(find /dev/block/platform -path '*by-name*' -name boot 2>/dev/null | head -n1)
+[ -e "$DTBO" ] || DTBO=$(find /dev/block/platform -path '*by-name*' -name dtbo 2>/dev/null | head -n1)
+[ -n "$BOOT" ] || abort "cannot find the boot partition"
+[ -n "$DTBO" ] || abort "cannot find the dtbo partition"
+ui_print "- boot: $BOOT"
+ui_print "- dtbo: $DTBO"
+
+rm -rf "$TMP"
+mkdir -p "$TMP" || abort "cannot create $TMP"
+unzip -o "$ZIPFILE" boot.img dtbo.img -d "$TMP" >/dev/null || abort "cannot unpack boot.img/dtbo.img"
+
+mkdir -p "$BACKUP"
+dd if="$BOOT" of="$BACKUP/boot-$(date +%Y%m%d-%H%M%S).img" bs=1048576 2>/dev/null \
+  && ui_print "- previous boot saved to $BACKUP" \
+  || ui_print "- warning: could not save the previous boot"
+dd if="$DTBO" of="$BACKUP/dtbo-$(date +%Y%m%d-%H%M%S).img" bs=1048576 2>/dev/null || true
+
+ui_print "- writing boot"
+dd if="$TMP/boot.img" of="$BOOT" bs=1048576 || abort "writing boot failed"
+sync
+
+ui_print "- writing dtbo"
+dd if="$TMP/dtbo.img" of="$DTBO" bs=1048576 || abort "writing dtbo failed"
+sync
+
+rm -rf "$TMP"
+ui_print "- done, reboot to system"
+exit 0
