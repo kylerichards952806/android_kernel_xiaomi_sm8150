@@ -280,9 +280,13 @@ jobs:
               echo "# build-manifest: $(ls "$TOOLCHAIN"/manifest_*.xml 2>/dev/null | head -1 | xargs -r basename)"
             } > toolchain-manifest.txt
             # %P keeps paths relative without a leading ./, which is what
-            # compare-toolchain.sh matches on.
-            ( cd "$TOOLCHAIN" && find . -type f -printf '%P\\0' \
-                | LC_ALL=C sort -z | xargs -0 -r sha256sum ) >> toolchain-manifest.txt
+            # compare-toolchain.sh matches on. The separator must be a real NUL
+            # (%P\0, one backslash): with a doubled backslash find emits the
+            # literal text \0 instead, sort -z sees a single huge line and
+            # xargs dies with "argument line too long". -n bounds the command
+            # line for the ~10k files without disturbing the sorted order.
+            ( cd "$TOOLCHAIN" && find . -type f -printf '%P\0' \
+                | LC_ALL=C sort -z | xargs -0 -r -n 200 sha256sum ) >> toolchain-manifest.txt
             echo "toolchain manifest: $(grep -vc '^#' toolchain-manifest.txt) files"
           fi
 
