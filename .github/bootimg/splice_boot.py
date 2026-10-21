@@ -83,12 +83,16 @@ def main():
     ap.add_argument("--kernel", required=True, help="arm64 Image to splice in")
     ap.add_argument("--ramdisk-from", default=None,
                     help="boot image to take the ramdisk from instead of the "
-                         "template's own (used for the Android 15 / LineageOS 22.2 "
-                         "build, where the template is the newer 24.0 container)")
+                         "template's own, for building an image whose container and "
+                         "ramdisk come from different ROMs")
     ap.add_argument("--ramdisk", default=None,
                     help="raw ramdisk blob to use instead of the template's "
-                         "(already-compressed cpio, e.g. the 22.2 ramdisk stored "
-                         "in .github/bootimg)")
+                         "(already-compressed cpio, e.g. one kept in .github/bootimg)")
+    ap.add_argument("--dtb", default=None,
+                    help="FDT to append instead of the template's own, either a raw "
+                         ".dtb or another boot image to lift it out of. The bootloader "
+                         "matches this blob against the dtbo partition, so it has to "
+                         "belong to the ROM the image is flashed onto.")
     ap.add_argument("-o", "--output", required=True)
     args = ap.parse_args()
 
@@ -109,11 +113,9 @@ def main():
         ramdisk_size = len(ramdisk)
         ramdisk_source = args.ramdisk
     elif args.ramdisk_from:
-        # Take the ramdisk from another ROM's boot image. The 22.2 boot image
-        # cannot be the template itself: its vendor footer sits at 50.1 MiB, and
-        # this kernel alone is 54.6 MiB, so nothing would fit. Keep the 24.0
-        # container (footer at 57.0 MiB, DTB the 5.4 kernel was built against)
-        # and carry only that ROM's ramdisk across.
+        # Take the ramdisk from another ROM's boot image, for cases where that
+        # ROM's own container is too small to hold this kernel: keep the larger
+        # container (and its footer and DTB) and carry only the ramdisk across.
         donor = load(args.ramdisk_from)
         dk, _, dr, _, _, _, _ = struct.unpack_from("<7I", donor, 8)
         dpage = struct.unpack_from("<I", donor, 36)[0]
@@ -137,7 +139,7 @@ def main():
     old_tail_off = old_ramdisk_off + align(ramdisk_size, page_size)
     tail = bytes(template[old_tail_off:limit])
     magic = tail.find(b"\xd0\x0d\xfe\xed")
-    if magic < 0:
+    if magic < 0 and not args.dtb:
         raise SystemExit("template has no appended DTB between the ramdisk and the "
                          "footer; refusing to build an image without one")
     # Keep the DTB and nothing else. What follows it up to the vbmeta blob is
@@ -145,10 +147,24 @@ def main():
     # kernel more than a page larger than the vendor's fail the fit check below
     # even though the partition had plenty of room. The DTB's own totalsize
     # field says where it ends, so this cannot clip the blob.
-    dtb_size = struct.unpack_from(">I", tail, magic + 4)[0]
-    if dtb_size <= 0 or magic + dtb_size > len(tail):
-        raise SystemExit(f"appended DTB claims an impossible size: {dtb_size}")
-    tail = tail[:magic + dtb_size]
+    if magic >= 0:
+        dtb_size = struct.unpack_from(">I", tail, magic + 4)[0]
+        if dtb_size <= 0 or magic + dtb_size > len(tail):
+            raise SystemExit(f"appended DTB claims an impossible size: {dtb_size}")
+        tail = tail[:magic + dtb_size]
+
+    if args.dtb:
+        # An FDT passed straight in, or a whole boot image to lift it out of -
+        # Pointing at another boot.img is how the ROM's own DTB gets reused.
+        raw = load(args.dtb)
+        m = raw.find(b"\xd0\x0d\xfe\xed")
+        if m < 0:
+            raise SystemExit(f"{args.dtb} contains no FDT magic")
+        size = struct.unpack_from(">I", raw, m + 4)[0]
+        if size <= 0 or m + size > len(raw):
+            raise SystemExit(f"{args.dtb} FDT claims an impossible size: {size}")
+        tail = raw[m:m + size]
+        print(f"dtb           {args.dtb} ({len(tail):,} B, overriding the template's)")
 
     new_ramdisk_off = PAGE + align(len(kernel), page_size)
     new_tail_off = new_ramdisk_off + align(ramdisk_size, page_size)
@@ -186,6 +202,7 @@ def main():
         f.write(out)
 
     print(f"template      {args.template}")
+    print(f"tail          {len(tail):,} B appended after the ramdisk")
     print(f"kernel        {args.kernel} ({len(kernel):,} B, was {kernel_size:,})")
     print(f"ramdisk       {ramdisk_size:,} B at {new_ramdisk_off:,} from {ramdisk_source}")
     print(f"footer at     {limit:,} (untouched)")
