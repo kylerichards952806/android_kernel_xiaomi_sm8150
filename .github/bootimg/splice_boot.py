@@ -26,6 +26,13 @@ def align(n, p=PAGE):
     return (n + p - 1) // p * p
 
 
+def read_raw(path):
+    """Read bytes as-is: a ramdisk is usually already gzip and must not be
+    decompressed here, the bootloader hands it to init untouched."""
+    with open(path, "rb") as f:
+        return f.read()
+
+
 def load(path):
     with open(path, "rb") as f:
         head = f.read(2)
@@ -74,6 +81,14 @@ def main():
     ap.add_argument("--template", required=True,
                     help="vendor boot image (128 MiB partition dump), optionally gzipped")
     ap.add_argument("--kernel", required=True, help="arm64 Image to splice in")
+    ap.add_argument("--ramdisk-from", default=None,
+                    help="boot image to take the ramdisk from instead of the "
+                         "template's own (used for the Android 15 / LineageOS 22.2 "
+                         "build, where the template is the newer 24.0 container)")
+    ap.add_argument("--ramdisk", default=None,
+                    help="raw ramdisk blob to use instead of the template's "
+                         "(already-compressed cpio, e.g. the 22.2 ramdisk stored "
+                         "in .github/bootimg)")
     ap.add_argument("-o", "--output", required=True)
     args = ap.parse_args()
 
@@ -88,6 +103,26 @@ def main():
 
     old_ramdisk_off = PAGE + align(kernel_size, page_size)
     ramdisk = bytes(template[old_ramdisk_off:old_ramdisk_off + ramdisk_size])
+    ramdisk_source = args.template
+    if args.ramdisk:
+        ramdisk = read_raw(args.ramdisk)
+        ramdisk_size = len(ramdisk)
+        ramdisk_source = args.ramdisk
+    elif args.ramdisk_from:
+        # Take the ramdisk from another ROM's boot image. The 22.2 boot image
+        # cannot be the template itself: its vendor footer sits at 50.1 MiB, and
+        # this kernel alone is 54.6 MiB, so nothing would fit. Keep the 24.0
+        # container (footer at 57.0 MiB, DTB the 5.4 kernel was built against)
+        # and carry only that ROM's ramdisk across.
+        donor = load(args.ramdisk_from)
+        dk, _, dr, _, _, _, _ = struct.unpack_from("<7I", donor, 8)
+        dpage = struct.unpack_from("<I", donor, 36)[0]
+        if donor[:8] != b"ANDROID!" or dpage != page_size:
+            raise SystemExit(f"ramdisk source is not a usable boot image: {args.ramdisk_from}")
+        doff = dpage + align(dk, dpage)
+        ramdisk = bytes(donor[doff:doff + dr])
+        ramdisk_size = dr
+        ramdisk_source = args.ramdisk_from
 
     limit = footer_offset(template)
     if limit is None:
@@ -152,7 +187,7 @@ def main():
 
     print(f"template      {args.template}")
     print(f"kernel        {args.kernel} ({len(kernel):,} B, was {kernel_size:,})")
-    print(f"ramdisk       {ramdisk_size:,} B kept at {new_ramdisk_off:,} (was {old_ramdisk_off:,})")
+    print(f"ramdisk       {ramdisk_size:,} B at {new_ramdisk_off:,} from {ramdisk_source}")
     print(f"footer at     {limit:,} (untouched)")
     print(f"output        {args.output} ({len(out):,} B)")
     return 0
