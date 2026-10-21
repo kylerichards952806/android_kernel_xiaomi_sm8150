@@ -403,6 +403,17 @@ static inline pmd_t pmd_mkdevmap(pmd_t pmd)
 #define pfn_pmd(pfn,prot)	__pmd(__phys_to_pmd_val((phys_addr_t)(pfn) << PAGE_SHIFT) | pgprot_val(prot))
 #define mk_pmd(page,prot)	pfn_pmd(page_to_pfn(page),prot)
 
+/*
+ * pmd_leaf()/pud_leaf() arrived with the generic page-table rework upstream;
+ * 5.4 does not have them. A block mapping is a section entry without the table
+ * bit, which is precisely the case pmd_bad() calls "bad" - so code that walks
+ * the page tables to translate a kernel address has no way to tell a 2 MiB
+ * block from a broken entry. KernelSU does exactly that walk before poking the
+ * syscall table through a fixmap, and without these it reports
+ * "failed to find phy addr" for every entry in a block-mapped .rodata.
+ */
+#define pmd_leaf(pmd)		((pmd_val(pmd) & PMD_TYPE_MASK) == PMD_TYPE_SECT)
+
 #define pud_young(pud)		pte_young(pud_pte(pud))
 #define pud_mkyoung(pud)	pte_pud(pte_mkyoung(pud_pte(pud)))
 #define pud_write(pud)		pte_write(pud_pte(pud))
@@ -413,6 +424,7 @@ static inline pmd_t pmd_mkdevmap(pmd_t pmd)
 #define __phys_to_pud_val(phys)	__phys_to_pte_val(phys)
 #define pud_pfn(pud)		((__pud_to_phys(pud) & PUD_MASK) >> PAGE_SHIFT)
 #define pfn_pud(pfn,prot)	__pud(__phys_to_pud_val((phys_addr_t)(pfn) << PAGE_SHIFT) | pgprot_val(prot))
+#define pud_leaf(pud)		((pud_val(pud) & PUD_TYPE_MASK) == PUD_TYPE_SECT)
 
 #define set_pmd_at(mm, addr, pmdp, pmd)	set_pte_at(mm, addr, (pte_t *)pmdp, pmd_pte(pmd))
 #define set_pud_at(mm, addr, pudp, pud)	set_pte_at(mm, addr, (pte_t *)pudp, pud_pte(pud))
