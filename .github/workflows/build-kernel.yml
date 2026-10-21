@@ -151,6 +151,21 @@ jobs:
           git log --oneline -1
           echo "--- KernelSU-Next submodule ---"
           git submodule status --recursive
+
+      - name: Complete the KernelSU-Next submodule history
+        run: |
+          set -eu
+          # actions/checkout applies fetch-depth: 50 to submodules as well, and
+          # KernelSU derives KSU_VERSION from `git rev-list --count HEAD` and the
+          # tag from `git describe`. A 50-commit clone therefore builds as
+          # 30000+50 with no tag (the kernel is then recognised by nobody, and
+          # the manager treats it as ancient), which is exactly what the first
+          # KernelSU release shows. Its own Kbuild tries to unshallow, but only
+          # as a shell side effect, so do it here where a failure is visible.
+          git -C drivers/kernelsu fetch --unshallow --tags 2>/dev/null \
+            || git -C drivers/kernelsu fetch --tags
+          echo "KernelSU-Next: $(git -C drivers/kernelsu describe --tags) \
+          ($(git -C drivers/kernelsu rev-list --count HEAD) commits)"
           # CONFIG_LOCALVERSION_AUTO makes the kernel release carry -g<sha>, so
           # the build records which commit it came from.
           echo "LOCALVERSION_AUTO sha: $(git rev-parse --short HEAD)"
@@ -514,7 +529,8 @@ jobs:
 
           ROOT="none"
           if grep -q '^CONFIG_KSU=y' out/.config; then
-            ksu_tag=$(git -C drivers/kernelsu describe --tags --abbrev=0 2>/dev/null || echo unknown)
+            ksu_tag=$(git -C drivers/kernelsu describe --tags --abbrev=0 2>/dev/null \
+              || echo "commit $(git -C drivers/kernelsu rev-parse --short HEAD)")
             ksu_ver=$(sed -n 's/.*KernelSU-Next version: \([0-9]*\).*/\1/p' build.log | head -1)
             ROOT="KernelSU-Next ${ksu_tag} (builtin, KSU_VERSION ${ksu_ver:-unknown})"
           fi
