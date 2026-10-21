@@ -471,6 +471,7 @@ jobs:
           if [ -f .github/bootimg/splice_boot.py ] \
              && [ -f .github/bootimg/boot-template.img.gz ] \
              && [ -f .github/bootimg/mkdtimg.py ] \
+             && [ -f .github/bootimg/pick_dtb.py ] \
              && [ -f .github/bootimg/verify_images.py ]; then
             echo 'packaging tools present in the checked-out tree'
             exit 0
@@ -497,10 +498,25 @@ jobs:
           # any image derived from the vendor dump; see AUDIT.md section 7.
           # The template keeps the vendor's AVB footer byte for byte, and its
           # ramdisk, which is the one the installed ROM expects.
+          #
+          # The appended device tree is this tree's own, not the template's.
+          # Keeping the template's DTB meant the image described the pre-merge
+          # hardware: device-tree fixes in this branch were compiled and then
+          # never reached the phone. pick_dtb.py chooses between the bases this
+          # tree builds from the identifiers the bootloader itself matches on
+          # (qcom,msm-id / qcom,board-id), so the dtbo built in the same run is
+          # still applied to the right silicon.
+          BOOT_DTB="$(python3 .github/bootimg/pick_dtb.py \
+            --template .github/bootimg/boot-template.img.gz \
+            out/arch/arm64/boot/dts/xiaomi/sm8150-xiaomi.dtb \
+            out/arch/arm64/boot/dts/xiaomi/sm8150-v2-xiaomi.dtb)"
+          echo "boot dtb: $BOOT_DTB"
           python3 .github/bootimg/splice_boot.py \
             --template .github/bootimg/boot-template.img.gz \
             --kernel out/arch/arm64/boot/Image \
+            --dtb "$BOOT_DTB" \
             -o dist/boot.img
+          echo "BOOT_DTB=$BOOT_DTB" >> "$GITHUB_ENV"
 
           # --- dtbo.img ---------------------------------------------------
           dtbo="$(find out/arch/arm64/boot/dts -name 'vayu-sm8150-overlay.dtbo' | head -1)"
@@ -531,7 +547,10 @@ jobs:
 
       - name: Verify packaged images
         if: success()
-        run: python3 .github/bootimg/verify_images.py dist
+        # The second argument is the DTB that was spliced in: the packaged image
+        # is rejected unless its appended tree is byte-identical to the one this
+        # build produced, which is what makes device-tree changes actually ship.
+        run: python3 .github/bootimg/verify_images.py dist "$BOOT_DTB"
 
       - name: Upload build log
         if: always()
