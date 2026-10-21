@@ -607,6 +607,32 @@ honest if that mode is ever selected again.
 | driver fd | `install fd for manager: 10194`, `ksu fd installed: 81` |
 | manager UI | **Working · BUILT-IN**, `v3.4.0-legacy (33294-4)`, hook mode `Kprobes` |
 
-Still unverified: a superuser grant to a real app (the manager lists 0 superusers
-and 0 modules, which is the expected state on a fresh install), and module
-mounting, which needs a metamodule installed first.
+### Superuser grant, verified end to end
+
+`roottest/` is a throwaway app (one activity, no Gradle: `aapt2 link` → `javac`
+against `android-34/android.jar` → `d8` → `zipalign` → `apksigner`) that runs
+`/system/bin/su -c "id; echo UID=$(id -u)"` and prints what came back.
+
+Two details worth keeping:
+
+* Before the uid is in the allowlist, that exec fails with `ENOENT` rather than
+a permission error. `ksu_handle_execve_sucompat()` bails out on
+`!ksu_is_allow_uid_for_current()` before it rewrites the path, so the request
+never reaches the kernel's `su` interception and the missing `/system/bin/su`
+on a ROM without one is what the app sees. Granting first, then running, is the
+order that works.
+* Once granted, the kernel rewrites the exec to `ksud` (or `/system/bin/sh` when
+`ksud` is absent) and switches credentials in flight.
+
+Result on the device (`0.0.21`):
+
+```
+su exit 0
+uid=0(root) gid=0(root) groups=0(root) context=u:r:ksu:s0
+UID=0
+```
+
+The manager reports `Superusers 2` (the `adb shell` uid the operator granted by
+hand, plus `com.kyler.roottest`) with hook mode `Kprobes`.
+
+Still unverified: module mounting, which needs a metamodule installed first.
