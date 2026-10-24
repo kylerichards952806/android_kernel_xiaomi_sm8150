@@ -1284,7 +1284,8 @@ static int fg_gen4_store_learned_capacity(void *data, int64_t learned_cap_uah)
 		}
 
 		rc = nvmem_device_write(chip->fg_nvmem,
-			SDAM_COOKIE_OFFSET_4BYTE, 1, &cookie_4byte);
+			SDAM_COOKIE_OFFSET_4BYTE, 4,
+			(u8 *)&cookie_4byte);
 		if (rc < 0) {
 			pr_err("Error in writing cookie to SDAM, rc=%d\n", rc);
 			return rc;
@@ -6670,8 +6671,19 @@ static int fg_gen4_iio_read_raw(struct iio_dev *indio_dev,
 		break;
 	case PSY_IIO_CHARGE_FULL:
 		rc = fg_gen4_get_learned_capacity(chip, &temp);
-		if (!rc)
+		/*
+		 * A missing or implausible learned capacity must not be reported as
+		 * 0: Android's battery information page shows "Unavailable" for a
+		 * zero maximum capacity.  Fall back to the nominal capacity from the
+		 * battery profile until capacity learning produces a valid value.
+		 */
+		if (!rc && temp > 0 &&
+				temp <= (int64_t)fg->bp.nom_cap_uah * 2000) {
 			*val1 = (int)temp;
+		} else if (fg->bp.nom_cap_uah > 0) {
+			*val1 = fg->bp.nom_cap_uah * 1000;
+			rc = 0;
+		}
 		break;
 	case PSY_IIO_TEMP:
 		rc = fg_gen4_get_battery_temp(fg, val1);
@@ -6685,7 +6697,12 @@ static int fg_gen4_iio_read_raw(struct iio_dev *indio_dev,
 	case PSY_IIO_CHARGE_FULL_DESIGN:
 #ifdef CONFIG_MACH_XIAOMI_SM8150
 		if (-EINVAL != fg->bp.nom_cap_uah) {
-			*val2 = fg->bp.nom_cap_uah * 1000;
+			/*
+			 * iio_read_channel_processed() returns the value through the
+			 * first output argument, so assigning *val2 left userspace
+			 * with 0 and made the design capacity show as "Unavailable".
+			 */
+			*val1 = fg->bp.nom_cap_uah * 1000;
 		} else {
 #endif
 		rc = fg_gen4_get_nominal_capacity(chip, &temp);
