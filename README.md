@@ -1,182 +1,102 @@
-# How do I submit patches to Android Common Kernels
+# vayu on 5.4 — my personal tweak branch
 
-1. BEST: Make all of your changes to upstream Linux. If appropriate, backport to the stable releases.
-   These patches will be merged automatically in the corresponding common kernels. If the patch is already
-   in upstream Linux, post a backport of the patch that conforms to the patch requirements below.
+Kernel I run on my own POCO X3 Pro (vayu, M2102J20SG) on LineageOS 24.0.
 
-2. LESS GOOD: Develop your patches out-of-tree (from an upstream Linux point-of-view). Unless these are
-   fixing an Android-specific bug, these are very unlikely to be accepted unless they have been
-   coordinated with kernel-team@android.com. If you want to proceed, post a patch that conforms to the
-   patch requirements below.
+Important bit first: this is **not** my port. Getting a 5.4 kernel booting on
+SM8150 was Ducky's work. I picked his tree up because I wanted a couple of things
+working properly on my phone, and I've been fixing and adjusting from there. Treat
+anything clever in here as his, and anything broken as mine.
 
-# Common Kernel patch requirements
+Ducky's tree: <https://github.com/DUCKS-QCM-5-4/android_kernel_xiaomi_sm8150>
+Branch used here: `MI_SM8150_5.4`. Kernel release: `5.4.302-vayu-kyler084-0.0.x`.
 
-- All patches must conform to the Linux kernel coding standards and pass `script/checkpatch.pl`
-- Patches shall not break gki_defconfig or allmodconfig builds for arm, arm64, x86, x86_64 architectures
-(see  https://source.android.com/setup/build/building-kernels)
-- If the patch is not merged from an upstream branch, the subject must be tagged with the type of patch:
-`UPSTREAM:`, `BACKPORT:`, `FROMGIT:`, `FROMLIST:`, or `ANDROID:`.
-- All patches must have a `Change-Id:` tag (see https://gerrit-review.googlesource.com/Documentation/user-changeid.html)
-- If an Android bug has been assigned, there must be a `Bug:` tag.
-- All patches must have a `Signed-off-by:` tag by the author and the submitter
+## Thanks
 
-Additional requirements are listed below based on patch type
+- **Ducky** (duckyduck@metonator.dev, DUCKS-QCM-5-4) for the 5.4 SM8150 bring-up,
+  the thermal work, and for keeping it public so the rest of us can even try this.
+- The **KernelSU-Next** people for v3.4.0-legacy and for the 5.4 compat shims that
+  make it buildable on a vendor kernel at all.
+- **LineageOS** for the ROM this is built against.
+- Anyone who flashes this and actually tells me what broke.
 
-## Requirements for backports from mainline Linux: `UPSTREAM:`, `BACKPORT:`
+## What I changed
 
-- If the patch is a cherry-pick from Linux mainline with no changes at all
-    - tag the patch subject with `UPSTREAM:`.
-    - add upstream commit information with a `(cherry-picked from ...)` line
-    - Example:
-        - if the upstream commit message is
-```
-        important patch from upstream
+Most of my work has been in the battery side. The stock driver reported a battery
+health screen with "Unavailable" for design and maximum capacity and a cycle count
+that reset itself, plus the phone would only take plain fast charge because the
+battery authentication never ran.
 
-        This is the detailed description of the important patch
+- **Battery stats survive reboot.** `qpnp-fg-gen4` now writes the full SDAM cookie
+  instead of a partial one, so the learned capacity and cycle count aren't thrown
+  away when the phone restarts. Design capacity, maximum capacity and cycle count
+  now show real numbers in Settings.
+- **Capacity fallback.** If the battery profile has no nominal value, the driver
+  keeps the learned capacity rather than reporting zero.
+- **DS28E16 battery authentication actually runs.** The driver was there but never
+  invoked on this platform; `smb5` now kicks off the authentication and only
+  unlocks the higher charge current once the result says the battery is verified.
+- **Authentication result read from the right channel.** `smb5-lib` looks at
+  `batt_verify` only, instead of trusting a channel that reports stale state.
+- **DS28E16 binding on 5.4.** The Maxim driver binds against the platform device
+  names this tree actually uses, so the node in the device tree is picked up.
+- **Device tree cleanup.** Dropped the duplicated charger thermal tables in the
+  vayu DTS.
+- **KernelSU-Next built in.** Hooked through kprobes (the syscall-table mode can
+  never bootstrap the manager), with the 5.4 header shims and `path_umount()` in
+  `fs/namespace.c` that a vendor 5.4 tree needs.
+- **CI does the boring parts.** Every push builds with Android clang 22, splices
+  this tree's own DTB into `boot.img`, verifies the packaged images against that
+  DTB, refuses to build if the branch is behind Ducky's upstream, and publishes a
+  release with `boot.img`, `dtbo.img`, a TWRP zip, the exact config, checksums and
+  a changelog of what changed since the previous release.
+- **Notes.** `AUDIT.md` has the long version — diagnostics, the boot-image
+  detective work, the KernelSU history. It's more detail than anyone needs, but
+  it's there so I don't re-learn the same things twice.
 
-        Signed-off-by: Fred Jones <fred.jones@foo.org>
-```
-        - then Joe Smith would upload the patch for the common kernel as
-```
-        UPSTREAM: important patch from upstream
+## 33 W charging: I need someone with a genuine charger
 
-        This is the detailed description of the important patch
+The DS28E16 path is verified as far as the driver goes — authentication runs, the
+result comes back verified, and the charge limit lifts. What I **cannot** verify is
+a real 33 W charge, because I don't own an original Xiaomi 33 W brick. I've only
+been able to watch the driver logic, not the charge rate.
 
-        Signed-off-by: Fred Jones <fred.jones@foo.org>
+So if you have the original Xiaomi 33 W charger (the MDY-11-EX one, or any genuine
+33 W Xiaomi/POCO unit) and you're running this kernel, a test report would be genuinely
+useful. What helps:
 
-        Bug: 135791357
-        Change-Id: I4caaaa566ea080fa148c5e768bb1a0b6f7201c01
-        (cherry-picked from c31e73121f4c1ec41143423ac6ce3ce6dafdcec1)
-        Signed-off-by: Joe Smith <joe.smith@foo.org>
-```
+- Charger model, and what the phone actually does — wattage from a USB meter, or
+  whether the lock screen says 33 W / shows the fast-charge animation.
+- `dmesg | grep -i -E 'ds28e16|batt_verify|smb5'` from a fresh boot while plugged in.
+- `cat /sys/class/power_supply/battery/current_max` and
+  `cat /sys/class/power_supply/battery/voltage_now` while charging.
+- Whether the battery info screen still shows capacity and cycle count after a
+  couple of reboots.
 
-- If the patch requires any changes from the upstream version, tag the patch with `BACKPORT:`
-instead of `UPSTREAM:`.
-    - use the same tags as `UPSTREAM:`
-    - add comments about the changes under the `(cherry-picked from ...)` line
-    - Example:
-```
-        BACKPORT: important patch from upstream
+Open an issue with that and I'll dig in. Honestly, "it charges at 33 W" or "it
+still caps at 18 W" are both useful answers.
 
-        This is the detailed description of the important patch
+## Flashing
 
-        Signed-off-by: Fred Jones <fred.jones@foo.org>
+Grab `boot.img` and the TWRP zip from [Releases](../../releases). With fastboot:
 
-        Bug: 135791357
-        Change-Id: I4caaaa566ea080fa148c5e768bb1a0b6f7201c01
-        (cherry-picked from c31e73121f4c1ec41143423ac6ce3ce6dafdcec1)
-        [ Resolved minor conflict in drivers/foo/bar.c ]
-        Signed-off-by: Joe Smith <joe.smith@foo.org>
-```
-
-## Requirements for other backports: `FROMGIT:`, `FROMLIST:`,
-
-- If the patch has been merged into an upstream maintainer tree, but has not yet
-been merged into Linux mainline
-    - tag the patch subject with `FROMGIT:`
-    - add info on where the patch came from as `(cherry picked from commit <sha1> <repo> <branch>)`. This
-must be a stable maintainer branch (not rebased, so don't use `linux-next` for example).
-    - if changes were required, use `BACKPORT: FROMGIT:`
-    - Example:
-        - if the commit message in the maintainer tree is
-```
-        important patch from upstream
-
-        This is the detailed description of the important patch
-
-        Signed-off-by: Fred Jones <fred.jones@foo.org>
-```
-        - then Joe Smith would upload the patch for the common kernel as
-```
-        FROMGIT: important patch from upstream
-
-        This is the detailed description of the important patch
-
-        Signed-off-by: Fred Jones <fred.jones@foo.org>
-
-        Bug: 135791357
-        (cherry picked from commit 878a2fd9de10b03d11d2f622250285c7e63deace
-         https://git.kernel.org/pub/scm/linux/kernel/git/foo/bar.git test-branch)
-        Change-Id: I4caaaa566ea080fa148c5e768bb1a0b6f7201c01
-        Signed-off-by: Joe Smith <joe.smith@foo.org>
+```sh
+fastboot flash boot boot.img
+fastboot flash dtbo dtbo.img
 ```
 
+Or flash the zip in TWRP; it writes both partitions and leaves a copy of the
+previous pair on `/sdcard` so you can get back.
 
-- If the patch has been submitted to LKML, but not accepted into any maintainer tree
-    - tag the patch subject with `FROMLIST:`
-    - add a `Link:` tag with a link to the submittal on lore.kernel.org
-    - if changes were required, use `BACKPORT: FROMLIST:`
-    - Example:
-```
-        FROMLIST: important patch from upstream
+This is built for and tested on LineageOS 24.0 only. Don't flash it on MIUI or on a
+different Android version and then wonder why it doesn't boot.
 
-        This is the detailed description of the important patch
+Heads up that an unlocked bootloader plus a custom kernel means Play Integrity
+needs help on the ROM side (PIF, Tricky Store and a keybox). That's separate from
+the kernel — none of it lives in here.
 
-        Signed-off-by: Fred Jones <fred.jones@foo.org>
+## Building
 
-        Bug: 135791357
-        Link: https://lore.kernel.org/lkml/20190619171517.GA17557@someone.com/
-        Change-Id: I4caaaa566ea080fa148c5e768bb1a0b6f7201c01
-        Signed-off-by: Joe Smith <joe.smith@foo.org>
-```
-
-## Requirements for Android-specific patches: `ANDROID:`
-
-- If the patch is fixing a bug to Android-specific code
-    - tag the patch subject with `ANDROID:`
-    - add a `Fixes:` tag that cites the patch with the bug
-    - Example:
-```
-        ANDROID: fix android-specific bug in foobar.c
-
-        This is the detailed description of the important fix
-
-        Fixes: 1234abcd2468 ("foobar: add cool feature")
-        Change-Id: I4caaaa566ea080fa148c5e768bb1a0b6f7201c01
-        Signed-off-by: Joe Smith <joe.smith@foo.org>
-```
-
-- If the patch is a new feature
-    - tag the patch subject with `ANDROID:`
-    - add a `Bug:` tag with the Android bug (required for android-specific features)
-
-# Vibrator driver for HHG device
-## How to merge the driver into kernel source tree
-
- 1. Copy \${this_project}/drivers/hid/hid-aksys.c into \${your_kernel_root}/drivers/hid/
-
- 2. Compare and merge \${this_project}/drivers/hid/hid-ids.h into \${your_kernel_root}/drivers/hid/hid-ids.h :
- Add the following code before the last line of this file
-
-    ```c
-		#define USB_VENDER_ID_QUALCOMM  0x0a12
-		#define USB_VENDER_ID_TEMP_HHG_AKSY 0x1234
-		#define USB_PRODUCT_ID_AKSYS_HHG  0x1000
-    ```
-
- 3. Merge \${this_project}/drivers/hid/Kconfig into \${your_kernel_root}/drivers/hid/Kconfig :
-Add the following code before the last line of this file
-
-		config HID_AKSYS_QRD
-    		tristate "AKSys gamepad USB adapter support"
-    		depends on HID
-    		---help---
-    		Support for AKSys gamepad USB adapter
-
-    	config AKSYS_QRD_FF
-    		bool "AKSys gamepad USB adapter force feedback support"
-    		depends on HID_AKSYS_QRD
-    		select INPUT_FF_MEMLESS
-    		---help---
-    		Say Y here if you have a AKSys gamepad USB adapter and want to
-    		enable force feedback support for it.
-    		
- 4. Merge \${this_project}/drivers/hid/Makefile into \${your_kernel_root}/drivers/hid/Makefile :
- Add the following code at the end of this file
-
-		obj-$(CONFIG_HID_AKSYS_QRD)	+= hid-aksys.o
-		
- 5. Modify your kernel's default build configuration file. Add the following two lines:
-
-        CONFIG_HID_AKSYS_QRD=m
-        CONFIG_AKSYS_QRD_FF=y
+Push to the branch and the GitHub Actions workflow does it: toolchain download,
+build, image splice, verification, release. If you want it locally, use the same
+clang the workflow pins; a random distro clang will build something, but it won't
+be what the releases are.
