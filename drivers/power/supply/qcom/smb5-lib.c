@@ -11334,21 +11334,17 @@ relax:
 #if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
 /*
  * The battery authentication result is exported by the Maxim DS28E16 driver
- * as the "batt_verify" power supply.  The QG IIO channel for it does not
- * exist in this tree (it is not part of smblib_qg_ext_iio_chan), so the old
- * code could never read a result and charging stayed capped at
- * mi,fcc-batt-unverify-ua forever.  Try the QG channel first for kernels that
- * do provide it, then fall back to the power supply.
+ * as the "batt_verify" power supply.  SMB5_QG_AUTHENTIC is the last member of
+ * enum qg_chg_iio_channels but has no entry in smblib_qg_ext_iio_chan, so the
+ * array built from that table is one element shorter than the enum: reading
+ * the channel would index past the end of iio_chan_list_qg and never return a
+ * result.  Use the power supply, which is the only real provider.
  */
 static int smblib_get_batt_verify_result(struct smb_charger *chg, int *val)
 {
 	int rc;
 	struct power_supply *psy;
 	union power_supply_propval pval = {0};
-
-	rc = smblib_get_prop_from_bms(chg, SMB5_QG_AUTHENTIC, val);
-	if (!rc)
-		return 0;
 
 	psy = power_supply_get_by_name("batt_verify");
 	if (!psy)
