@@ -162,26 +162,33 @@ jobs:
 
       - name: Check the tree already contains the upstream (DUCKS-QCM-5-4) history
         env:
-          UPSTREAM_REPO: https://github.com/DUCKS-QCM-5-4/android_kernel_xiaomi_sm8150.git
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_REPO: DUCKS-QCM-5-4/android_kernel_xiaomi_sm8150
           UPSTREAM_BRANCH: MI_SM8150_5.4
+          HEAD_REPO: ${{ github.repository }}
+          HEAD_BRANCH: MI_SM8150_5.4
           SKIP: ${{ inputs.skip_sync_check || false }}
         run: |
           set -eu
-          # A build is only useful if it sits on top of the current upstream tip,
-          # otherwise fixes that already exist upstream silently go missing from
-          # the image.  Compare commit lists instead of merging so a build never
-          # rewrites history behind the user's back.
-          git fetch --no-tags --depth=1 "$UPSTREAM_REPO" "$UPSTREAM_BRANCH"
-          upstream_sha=$(git rev-parse FETCH_HEAD)
-          echo "upstream tip: $upstream_sha"
+          # A build is only useful when it sits on top of the current upstream
+          # tip, otherwise fixes that already exist upstream silently go missing
+          # from the image.  Ask the API instead of the local clone: the checkout
+          # is shallow, so "is the parent tip an ancestor?" cannot be answered
+          # here.  Nothing is merged or rewritten, the build only fails early.
+          if ! behind=$(gh api \
+              "repos/$UPSTREAM_REPO/compare/$UPSTREAM_BRANCH...$HEAD_REPO:$HEAD_BRANCH" \
+              --jq '.behind_by' 2>/dev/null); then
+            echo '::warning::could not compare against upstream (API error); sync check skipped'
+            exit 0
+          fi
+          echo "commits behind upstream $UPSTREAM_REPO@$UPSTREAM_BRANCH: $behind"
 
-          if git cat-file -e "${upstream_sha}^{commit}" 2>/dev/null && \
-             git merge-base --is-ancestor "$upstream_sha" HEAD; then
-            echo "::notice::tree already contains upstream $upstream_sha"
+          if [ "$behind" = "0" ]; then
+            echo "::notice::tree contains the current upstream tip"
             exit 0
           fi
 
-          msg="this branch does not contain upstream $UPSTREAM_REPO@$UPSTREAM_BRANCH ($upstream_sha); sync it first (GitHub 'Sync fork' or 'git merge $upstream_sha') so the build includes Ducky's latest changes"
+          msg="this branch is $behind commit(s) behind $UPSTREAM_REPO@$UPSTREAM_BRANCH; sync it first (GitHub 'Sync fork' or 'git merge' the upstream tip) so the build includes Ducky's latest changes"
           if [ "$SKIP" = "true" ]; then
             echo "::warning::$msg (skip_sync_check=true, continuing)"
           else
