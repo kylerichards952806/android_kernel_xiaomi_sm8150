@@ -1,9 +1,11 @@
 name: Build kernel (SM8150 / vayu)
 
-# Publishing a release writes to the repository, so the job has to ask for it
-# explicitly; everything else in this workflow only reads.
+# Publishing a release writes to the repository and the run cleanup deletes
+# older workflow runs, so the job has to ask for both explicitly; everything
+# else in this workflow only reads.
 permissions:
   contents: write
+  actions: write
 
 on:
   workflow_dispatch:
@@ -635,6 +637,7 @@ jobs:
           # prune at the end of this step is allowed to delete.
           TAG="vayu-${VERSION}-${DATE}"
           SHA=$(git rev-parse --short HEAD)
+          FULL_SHA=$(git rev-parse HEAD)
 
           ROOT="none"
           if grep -q '^CONFIG_KSU=y' out/.config; then
@@ -644,16 +647,29 @@ jobs:
             ROOT="KernelSU-Next ${ksu_tag} (builtin, KSU_VERSION ${ksu_ver:-unknown})"
           fi
 
-          # Changelog: everything on the branch since the previous release of this
-          # kernel. Tags are what the releases created, so the first release on a
-          # fresh clone falls back to the most recent commits.
-          prev=$(git describe --tags --abbrev=0 --match 'vayu-*' 2>/dev/null || true)
-          if [ -n "$prev" ]; then
-            echo "changes since $prev"
-            git log --no-merges --format='- %s (%h)' "$prev..HEAD" > changes.md || true
-          else
-            echo 'no previous release tag in this clone; listing recent commits'
-            git log --no-merges -n 15 --format='- %s (%h)' > changes.md || true
+          # Changelog: cumulative, not just what landed in the last few hours.
+          # Each build replaces the previous release, so "changes since the last
+          # tag" would mean a fresh reader never sees the battery or charging
+          # work that is still in the kernel. .github/changelog-base records the
+          # upstream sync point, and everything on top of it is listed every
+          # time (newest first). The list is built through the compare API so it
+          # does not depend on how much history the checkout fetched.
+          base=$(sed -n '1p' .github/changelog-base 2>/dev/null || true)
+          if [ -n "$base" ]; then
+            echo "changes since upstream sync point $base"
+            gh api "repos/${{ github.repository }}/compare/${base}...${FULL_SHA}" \
+              --jq '.commits | reverse | .[] | "- " + (.commit.message | split("\n")[0]) + " (" + .sha[0:9] + ")"' \
+              > changes.md || true
+          fi
+          if [ ! -s changes.md ]; then
+            prev=$(git describe --tags --abbrev=0 --match 'vayu-*' 2>/dev/null || true)
+            if [ -n "$prev" ]; then
+              echo "changes since $prev"
+              git log --no-merges --format='- %s (%h)' "$prev..HEAD" > changes.md || true
+            else
+              echo 'no base or previous tag available; listing recent commits'
+              git log --no-merges -n 15 --format='- %s (%h)' > changes.md || true
+            fi
           fi
           [ -s changes.md ] || echo '- (no commits recorded)' > changes.md
 
@@ -725,4 +741,18 @@ jobs:
                 echo "deleting superseded release $old"
                 gh release delete "$old" --yes --cleanup-tag || \
                   echo "::warning::could not delete $old"
+              done
+
+          # Likewise for the Actions history: keep the run that produced the
+          # live release and drop the rest, so the list is not a wall of
+          # cancelled and superseded builds. Only completed runs are touched -
+          # a parallel dispatch still building is none of this step's business.
+          echo 'pruning old workflow runs'
+          gh run list --workflow build-kernel.yml --limit 100 \
+            --json databaseId,status --jq '.[] | select(.status == "completed") | .databaseId' \
+            | while read -r run; do
+                [ "$run" = "${{ github.run_id }}" ] && continue
+                gh api -X DELETE "repos/${{ github.repository }}/actions/runs/$run" >/dev/null 2>&1 \
+                  && echo "deleted run $run" \
+                  || echo "::warning::could not delete run $run"
               done
