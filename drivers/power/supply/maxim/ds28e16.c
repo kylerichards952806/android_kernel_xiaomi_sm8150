@@ -1142,8 +1142,8 @@ static int verify_get_property(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_VERIFY_MODEL_NAME:
-#if IS_ENABLED(CONFIG_BATT_VERIFY_BY_DS28E16) && \
-	IS_ENABLED(CONFIG_BATT_VERIFY_FORCE_VERIFIED)
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16) && \
+	defined(CONFIG_BATT_VERIFY_FORCE_VERIFIED)
 		val->strval = "ds28e16";
 #else
 		ret = ds28el16_Read_RomID_retry(mi_romid);
@@ -1154,8 +1154,8 @@ static int verify_get_property(struct power_supply *psy,
 #endif
 		break;
 	case POWER_SUPPLY_PROP_AUTHEN_RESULT:
-#if IS_ENABLED(CONFIG_BATT_VERIFY_BY_DS28E16) && \
-	IS_ENABLED(CONFIG_BATT_VERIFY_FORCE_VERIFIED)
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16) && \
+	defined(CONFIG_BATT_VERIFY_FORCE_VERIFIED)
 		/*
 		 * Battery authentication is deliberately short-circuited here
 		 * (CONFIG_BATT_VERIFY_FORCE_VERIFIED).
@@ -1194,8 +1194,8 @@ static int verify_get_property(struct power_supply *psy,
 			return -EAGAIN;
 		break;
 	case POWER_SUPPLY_PROP_CHIP_OK:
-#if IS_ENABLED(CONFIG_BATT_VERIFY_BY_DS28E16) && \
-	IS_ENABLED(CONFIG_BATT_VERIFY_FORCE_VERIFIED)
+#if defined(CONFIG_BATT_VERIFY_BY_DS28E16) && \
+	defined(CONFIG_BATT_VERIFY_FORCE_VERIFIED)
 		/* same reasoning as AUTHEN_RESULT: no chip to interrogate */
 		val->intval = true;
 #else
