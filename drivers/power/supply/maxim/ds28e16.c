@@ -1773,7 +1773,19 @@ static int ds28e16_probe(struct platform_device *pdev)
 
 	ds_log("%s entry.", __func__);
 	ds_dbg("platform_device is %s", pdev->name);
-	if (strcmp(pdev->name, "soc:maxim_ds28e16") != 0)
+	/*
+	 * Platform device names depend on how the kernel names DT platform
+	 * devices: the vendor 4.x trees used the full path
+	 * ("soc:maxim_ds28e16") while 5.4 uses "soc/maxim_ds28e16", and some
+	 * configurations use the plain node name.  Match the node too, otherwise
+	 * the driver never probes, no "batt_verify" power supply is registered
+	 * and the charger keeps the unverified-battery (2 A) FCC cap, which is
+	 * what stops the official 33 W charger from fast charging.
+	 */
+	if (strcmp(pdev->name, "soc:maxim_ds28e16") &&
+			strcmp(pdev->name, "soc/maxim_ds28e16") &&
+			(!pdev->dev.of_node ||
+			 strcmp(pdev->dev.of_node->name, "maxim_ds28e16")))
 		return -ENODEV;
 
 	if (!pdev->dev.of_node || !of_device_is_available(pdev->dev.of_node))
