@@ -1,5 +1,6 @@
 name: 33 W charging test
 description: Tell me whether a genuine Xiaomi 33 W charger actually charges at 33 W on this kernel.
+description: Report whether a genuine Xiaomi 33 W charger actually charges at 33 W on this kernel.
 title: "[33W] "
 body:
   - type: markdown
