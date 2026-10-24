@@ -1388,7 +1388,8 @@ int smblib_get_prop_from_bms(struct smb_charger *chg,
 {
 	int rc;
 
-	if (IS_ERR_OR_NULL(chg->iio_chan_list_qg))
+	if (IS_ERR_OR_NULL(chg->iio_chan_list_qg) ||
+			IS_ERR_OR_NULL(chg->iio_chan_list_qg[channel]))
 		return -ENODEV;
 
 	rc = iio_read_channel_processed(chg->iio_chan_list_qg[channel],
@@ -11331,34 +11332,70 @@ relax:
 }
 
 #if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
+/*
+ * The battery authentication result is exported by the Maxim DS28E16 driver
+ * as the "batt_verify" power supply.  The QG IIO channel for it does not
+ * exist in this tree (it is not part of smblib_qg_ext_iio_chan), so the old
+ * code could never read a result and charging stayed capped at
+ * mi,fcc-batt-unverify-ua forever.  Try the QG channel first for kernels that
+ * do provide it, then fall back to the power supply.
+ */
+static int smblib_get_batt_verify_result(struct smb_charger *chg, int *val)
+{
+	int rc;
+	struct power_supply *psy;
+	union power_supply_propval pval = {0};
+
+	rc = smblib_get_prop_from_bms(chg, SMB5_QG_AUTHENTIC, val);
+	if (!rc)
+		return 0;
+
+	psy = power_supply_get_by_name("batt_verify");
+	if (!psy)
+		return -ENODEV;
+
+	rc = power_supply_get_property(psy, POWER_SUPPLY_PROP_AUTHEN_RESULT,
+				       &pval);
+	power_supply_put(psy);
+	if (rc < 0)
+		return rc;
+
+	*val = pval.intval;
+	return 0;
+}
+
 static void smblib_batt_verify_update_work(struct work_struct *work)
 {
 	struct smb_charger *chg = container_of(work, struct smb_charger,
-			batt_verify_update_work.work);
+					       batt_verify_update_work.work);
 	int rc, pval = 0;
 	static int count;
 
-	rc = smblib_get_prop_from_bms(chg,
-					SMB5_QG_AUTHENTIC, &pval);
+	rc = smblib_get_batt_verify_result(chg, &pval);
 	if (rc < 0) {
-		pr_err("Couldn't get batt verify status rc=%d\n", rc);
+		smblib_dbg(chg, PR_MISC, "Couldn't get batt verify status rc=%d\n",
+			   rc);
+		pval = 0;
 	}
+
 	chg->batt_verified = pval;
-	pr_err("batt_verified =%d\n", chg->batt_verified);
+
 	if (chg->batt_verified) {
+		/* authenticated pack: drop the unverified-battery FCC cap */
 		vote(chg->fcc_votable, BATT_VERIFY_VOTER, false, 0);
 		count = 0;
-		return;
-	}
-	if (count < 3) {
-		count ++;
-		pr_err("battery verify failed, we will recheck it!\n");
+	} else if (count < 3) {
+		count++;
 		schedule_delayed_work(&chg->batt_verify_update_work,
-			msecs_to_jiffies(3000));
+				      msecs_to_jiffies(3000));
+		return;
 	} else {
 		count = 0;
 	}
 
+	/* re-check so a replaced battery is verified/limited again */
+	schedule_delayed_work(&chg->batt_verify_update_work,
+			      msecs_to_jiffies(60000));
 }
 #endif
 
@@ -11574,6 +11611,8 @@ int smblib_init(struct smb_charger *chg)
 #ifdef CONFIG_MACH_XIAOMI_SM8150
 #if defined(CONFIG_BATT_VERIFY_BY_DS28E16)
 	INIT_DELAYED_WORK(&chg->batt_verify_update_work, smblib_batt_verify_update_work);
+	schedule_delayed_work(&chg->batt_verify_update_work,
+			      msecs_to_jiffies(5000));
 #endif
 	INIT_DELAYED_WORK(&chg->raise_qc3_vbus_work, smblib_raise_qc3_vbus_work);
 	INIT_DELAYED_WORK(&chg->charger_type_recheck, smblib_charger_type_recheck);
