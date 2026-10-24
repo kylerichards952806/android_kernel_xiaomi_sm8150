@@ -147,7 +147,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref || github.ref }}
-          fetch-depth: 50
+          # Deep enough that the changelog's base commit (.github/changelog-base)
+          # is inside the clone. The base is the fork point, and the distance to
+          # it grows by one with every commit, so this is headroom rather than a
+          # number that means anything by itself.
+          fetch-depth: 120
           # Release tags are the changelog's left edge: `git describe --match
           # 'kernel-*'` needs them even on a shallow clone.
           fetch-tags: true
@@ -642,7 +646,6 @@ jobs:
           # rather than vayu-<version>-<date> with the device named twice.
           TAG="kernel-${VERSION}-${DATE}"
           SHA=$(git rev-parse --short HEAD)
-          FULL_SHA=$(git rev-parse HEAD)
 
           ROOT="none"
           if grep -q '^CONFIG_KSU=y' out/.config; then
@@ -654,26 +657,29 @@ jobs:
 
           # Changelog: cumulative, not just what landed in the last few hours.
           # Each build replaces the previous release, so "changes since the last
-          # tag" would mean a fresh reader never sees the battery or charging
-          # work that is still in the kernel. .github/changelog-base records the
-          # upstream sync point, and everything on top of it is listed every
-          # time (newest first). The list is built through the compare API so it
-          # does not depend on how much history the checkout fetched.
+          # tag" would mean a fresh reader never sees the battery, charging or
+          # KernelSU work that is still in the kernel. .github/changelog-base
+          # records the fork point (Ducky's tip before this branch started) and
+          # everything on top of it is listed every time.
+          #
+          # --first-parent keeps Ducky's own commits that arrived through merges
+          # out of the list: they are his work, already covered by the credit.
+          # --no-merges drops the merge commits themselves.
           #
           # Only kernel changes belong here. CI, docs and repo plumbing commits
           # are how the build and the release page got made, not something a
           # reader flashing a kernel needs to scroll past, so the prefixes are
-          # filtered out of both the API path and the git fallbacks.
+          # filtered out of every path below.
           NOISE='(ci|cl|docs|github|chore)[:(]'
           base=$(sed -n '1p' .github/changelog-base 2>/dev/null || true)
           if [ -n "$base" ]; then
-            echo "changes since upstream sync point $base"
-            gh api "repos/${{ github.repository }}/compare/${base}...${FULL_SHA}" \
-              --jq '.commits | reverse | .[]
-                    | (.commit.message | split("\n")[0]) as $s
-                    | select(($s | test("^'"$NOISE"'"; "i")) | not)
-                    | "- " + $s + " (" + .sha[0:9] + ")"' \
-              > changes.md || true
+            if git cat-file -e "${base}^{commit}" 2>/dev/null; then
+              echo "changes since fork point $base"
+              git log --first-parent --no-merges --format='- %s (%h)' \
+                "${base}..HEAD" | grep -vE "^- ($NOISE)" > changes.md || true
+            else
+              echo "::warning::changelog base $base is not in this clone (fetch-depth too shallow); falling back"
+            fi
           fi
           if [ ! -s changes.md ]; then
             prev=$(git describe --tags --abbrev=0 --match 'kernel-*' 2>/dev/null || true)
