@@ -149,7 +149,7 @@ jobs:
           ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 50
           # Release tags are the changelog's left edge: `git describe --match
-          # 'vayu-*'` needs them even on a shallow clone.
+          # 'kernel-*'` needs them even on a shallow clone.
           fetch-tags: true
           # drivers/kernelsu is the KernelSU-Next submodule. Its Kbuild derives
           # KSU_VERSION from the submodule's own git history, so it needs a real
@@ -637,8 +637,10 @@ jobs:
           DATE=$(date -u +%Y-%m-%d)
 
           # One ROM, one branch: the tag also decides which older releases the
-          # prune at the end of this step is allowed to delete.
-          TAG="vayu-${VERSION}-${DATE}"
+          # prune at the end of this step is allowed to delete. The version
+          # string already says vayu, so the tag is kernel-<version>-<date>
+          # rather than vayu-<version>-<date> with the device named twice.
+          TAG="kernel-${VERSION}-${DATE}"
           SHA=$(git rev-parse --short HEAD)
           FULL_SHA=$(git rev-parse HEAD)
 
@@ -674,7 +676,7 @@ jobs:
               > changes.md || true
           fi
           if [ ! -s changes.md ]; then
-            prev=$(git describe --tags --abbrev=0 --match 'vayu-*' 2>/dev/null || true)
+            prev=$(git describe --tags --abbrev=0 --match 'kernel-*' 2>/dev/null || true)
             if [ -n "$prev" ]; then
               echo "changes since $prev"
               git log --no-merges --format='- %s (%h)' "$prev..HEAD" \
@@ -749,7 +751,9 @@ jobs:
             | while read -r old; do
                 [ "$old" = "$TAG" ] && continue
                 case "$old" in
-                  vayu-*) ;;
+                  # kernel-* is the current scheme; vayu-* is what the older
+                  # releases were tagged with and still needs pruning once.
+                  kernel-*|vayu-*) ;;
                   *) continue ;;
                 esac
                 echo "deleting superseded release $old"
