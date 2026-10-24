@@ -657,21 +657,32 @@ jobs:
           # upstream sync point, and everything on top of it is listed every
           # time (newest first). The list is built through the compare API so it
           # does not depend on how much history the checkout fetched.
+          #
+          # Only kernel changes belong here. CI, docs and repo plumbing commits
+          # are how the build and the release page got made, not something a
+          # reader flashing a kernel needs to scroll past, so the prefixes are
+          # filtered out of both the API path and the git fallbacks.
+          NOISE='(ci|cl|docs|github|chore)[:(]'
           base=$(sed -n '1p' .github/changelog-base 2>/dev/null || true)
           if [ -n "$base" ]; then
             echo "changes since upstream sync point $base"
             gh api "repos/${{ github.repository }}/compare/${base}...${FULL_SHA}" \
-              --jq '.commits | reverse | .[] | "- " + (.commit.message | split("\n")[0]) + " (" + .sha[0:9] + ")"' \
+              --jq '.commits | reverse | .[]
+                    | (.commit.message | split("\n")[0]) as $s
+                    | select(($s | test("^'"$NOISE"'"; "i")) | not)
+                    | "- " + $s + " (" + .sha[0:9] + ")"' \
               > changes.md || true
           fi
           if [ ! -s changes.md ]; then
             prev=$(git describe --tags --abbrev=0 --match 'vayu-*' 2>/dev/null || true)
             if [ -n "$prev" ]; then
               echo "changes since $prev"
-              git log --no-merges --format='- %s (%h)' "$prev..HEAD" > changes.md || true
+              git log --no-merges --format='- %s (%h)' "$prev..HEAD" \
+                | grep -vE "^- ($NOISE)" > changes.md || true
             else
-              echo 'no base or previous tag available; listing recent commits'
-              git log --no-merges -n 15 --format='- %s (%h)' > changes.md || true
+              echo 'no base or previous tag available; listing recent kernel commits'
+              git log --no-merges -n 40 --format='- %s (%h)' \
+                | grep -vE "^- ($NOISE)" | head -15 > changes.md || true
             fi
           fi
           [ -s changes.md ] || echo '- (no commits recorded)' > changes.md
