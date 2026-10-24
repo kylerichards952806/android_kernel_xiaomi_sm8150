@@ -1172,6 +1172,10 @@ static int verify_get_property(struct power_supply *psy,
 		 * verified result, so the retry work below never gets scheduled
 		 * either.  The real handshake is still reachable from the
 		 * ds_Auth_Result sysfs node if a genuine pack needs testing.
+		 *
+		 * ROMID, the page data and the seeds are byte arrays and only make
+		 * sense through sysfs; the charger reads nothing but authen_result,
+		 * chip_ok and verify_model_name, which are ints and a string.
 		 */
 		val->intval = true;
 #else

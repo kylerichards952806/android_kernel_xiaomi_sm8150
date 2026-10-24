@@ -881,19 +881,14 @@ int smblib_set_fastcharge_mode(struct smb_charger *chg, bool enable)
 	if (IS_ERR_OR_NULL(chg->iio_chan_list_qg))
 		return 0;
 
-// #if defined(CONFIG_BATT_VERIFY_BY_DS28E16) || defined(CONFIG_BATT_VERIFY_BY_DS28E16_NABU)
-// 	rc = smblib_get_prop_from_bms(chg,
-// 					SMB5_QG_AUTHENTIC, &pval.intval);
-// 	if (rc < 0) {
-// 		smblib_err(chg, "Couldn't get battery authentic:%d\n", rc);
-// 		return rc;
-// 	}
-// 	if (!pval.intval)
-// 		enable = false;
-// // #else //debug: fatal if bat is 95%+
-// // 	smblib_err(chg, "battery authentic disabled, enable fastcharge anyway:%d\n", rc);
-// // 	enable = true;
-// #endif
+	/*
+	 * Battery authentication is deliberately not read here.  The DS28E16
+	 * properties that carry the ROM ID and page data are byte arrays and
+	 * an IIO channel can only return an int, so those stay a sysfs
+	 * interface on "batt_verify".  The verified result the charger acts on
+	 * comes from smblib_batt_verify_update_work(), which reads
+	 * authen_result through the power supply.
+	 */
 
 	/*if soc > 95 do not set fastcharge flag*/
 	rc = smblib_get_prop_from_bms(chg,
