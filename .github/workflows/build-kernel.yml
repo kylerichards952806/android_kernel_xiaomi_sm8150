@@ -773,23 +773,10 @@ jobs:
             dist/kernel.config build.log
           echo "published $TAG"
 
-          # A release is the kernel someone is expected to flash, so an older
-          # one is a trap: it is either superseded or outright broken (the
-          # first KernelSU build booted but the driver never hooked anything).
-          # Keep exactly the one just published.
-          gh release list --limit 100 --json tagName --jq '.[].tagName' \
-            | while read -r old; do
-                [ "$old" = "$TAG" ] && continue
-                case "$old" in
-                  # kernel-* is the current scheme; vayu-* is what the older
-                  # releases were tagged with and still needs pruning once.
-                  kernel-*|vayu-*) ;;
-                  *) continue ;;
-                esac
-                echo "deleting superseded release $old"
-                gh release delete "$old" --yes --cleanup-tag || \
-                  echo "::warning::could not delete $old"
-              done
+          # Every release stays: the version in the tag is the only thing that
+          # says which kernel a bug report came from, so nothing is deleted
+          # here. A re-run of the same dispatch is still replaced above, since
+          # that is the same version, not an older one.
 
           # Likewise for the Actions history: keep the run that produced the
           # live release and drop the rest, so the list is not a wall of
