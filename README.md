@@ -32,9 +32,12 @@ battery authentication never ran.
   now show real numbers in Settings.
 - **Capacity fallback.** If the battery profile has no nominal value, the driver
   keeps the learned capacity rather than reporting zero.
-- **DS28E16 battery authentication actually runs.** The driver was there but never
-  invoked on this platform; `smb5` now kicks off the authentication and only
-  unlocks the higher charge current once the result says the battery is verified.
+- **Battery reported as verified on an aftermarket pack.** `smb5` now reads the
+  DS28E16 driver's result and drops the unverified-battery charge cap once it says
+  the battery is verified. My pack isn't a genuine one, so
+  `CONFIG_BATT_VERIFY_FORCE_VERIFIED` (on in `vayu.config`) makes the driver answer
+  `authen_result 1` / `chip_ok 1` without running the 1-Wire handshake. Turn that
+  option off and the real authentication comes back.
 - **Authentication result read from the right channel.** `smb5-lib` looks at
   `batt_verify` only, instead of trusting a channel that reports stale state.
 - **DS28E16 binding on 5.4.** The Maxim driver binds against the platform device

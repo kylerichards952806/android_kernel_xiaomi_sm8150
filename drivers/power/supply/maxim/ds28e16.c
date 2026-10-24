@@ -1142,13 +1142,39 @@ static int verify_get_property(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_VERIFY_MODEL_NAME:
+#if IS_ENABLED(CONFIG_BATT_VERIFY_BY_DS28E16) && \
+	IS_ENABLED(CONFIG_BATT_VERIFY_FORCE_VERIFIED)
+		val->strval = "ds28e16";
+#else
 		ret = ds28el16_Read_RomID_retry(mi_romid);
 		if (ret == DS_TRUE)
 			val->strval = "ds28e16";
 		else
 			val->strval = "unknown";
+#endif
 		break;
 	case POWER_SUPPLY_PROP_AUTHEN_RESULT:
+#if IS_ENABLED(CONFIG_BATT_VERIFY_BY_DS28E16) && \
+	IS_ENABLED(CONFIG_BATT_VERIFY_FORCE_VERIFIED)
+		/*
+		 * Battery authentication is deliberately short-circuited here
+		 * (CONFIG_BATT_VERIFY_FORCE_VERIFIED).
+		 *
+		 * The pack in this phone is aftermarket, so there is either no
+		 * DS28E16 on the 1-Wire bus or one whose secret does not match,
+		 * and a real handshake just fails its MAC check.  SMB5 reads the
+		 * result and keeps the unverified-battery FCC cap on, which is
+		 * what pins charging at ~18 W no matter which charger is used.
+		 *
+		 * The driver still registers "batt_verify" and still answers
+		 * every property the charger stack asks for; it just reports the
+		 * pack as authenticated without touching the bus.  Probe sees a
+		 * verified result, so the retry work below never gets scheduled
+		 * either.  The real handshake is still reachable from the
+		 * ds_Auth_Result sysfs node if a genuine pack needs testing.
+		 */
+		val->intval = true;
+#else
 		ret = AuthenticateDS28E16(auth_ANON, auth_BDCONST, 0,
 					  pagenumber, challenge, session_seed,
 					  S_secret);
@@ -1156,6 +1182,7 @@ static int verify_get_property(struct power_supply *psy,
 			val->intval = true;
 		else
 			val->intval = false;
+#endif
 		break;
 	case POWER_SUPPLY_PROP_PAGENUMBER:
 		val->intval = pagenumber;
@@ -1167,6 +1194,11 @@ static int verify_get_property(struct power_supply *psy,
 			return -EAGAIN;
 		break;
 	case POWER_SUPPLY_PROP_CHIP_OK:
+#if IS_ENABLED(CONFIG_BATT_VERIFY_BY_DS28E16) && \
+	IS_ENABLED(CONFIG_BATT_VERIFY_FORCE_VERIFIED)
+		/* same reasoning as AUTHEN_RESULT: no chip to interrogate */
+		val->intval = true;
+#else
 		ds_log("lvchen---POWER_SUPPLY_PROP_CHIP_OK\n");
 		ret = ds28el16_Read_RomID_retry(mi_romid);
 		if ((mi_romid[0] == FAMILY_CODE) &&
@@ -1177,6 +1209,7 @@ static int verify_get_property(struct power_supply *psy,
 			val->intval = false;
 		ds_log("lvchen---flag_mi_romid: %d, flag_mi_status: %d\n",
 		       flag_mi_romid, flag_mi_status);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_DS_STATUS:
 		ret = ds28el16_get_page_status_retry(buf);

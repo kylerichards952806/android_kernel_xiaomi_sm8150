@@ -6,6 +6,19 @@ config BATT_VERIFY_BY_DS28E16
 	help
 	  It needs a onewire physical controller to work.
 
+config BATT_VERIFY_FORCE_VERIFIED
+	bool "Report the battery as verified without running DS28E16 authentication"
+	depends on BATT_VERIFY_BY_DS28E16
+	help
+	  Keep the DS28E16 driver and its "batt_verify" power supply, but
+	  answer the authentication result (and chip presence) as verified
+	  without doing the 1-Wire handshake.  Useful with an aftermarket
+	  pack: a failed handshake leaves SMB5's unverified-battery FCC cap
+	  in place, which holds charging at ~18 W.
+
+	  Say N to authenticate real DS28E16 packs and keep the charge cap
+	  for anything that fails the handshake.
+
 config ONEWIRE_GPIO
 	tristate
 	prompt "Support Onewire Driver."

@@ -18,13 +18,18 @@ learned capacity when the battery profile has no nominal value instead of
 reporting zero. Design capacity, maximum capacity and cycle count show real
 numbers now, and they stay put across reboots.
 
-The second was fast charging. The pack has a Maxim DS28E16 authentication chip in
-it and the driver had been sitting in the tree unused, so nothing ever asked the
-battery who it was. SMB5 now reads the result five seconds after probe, retries a
-few times while the supplier is still coming up, and re-checks every minute so a
-replaced battery gets judged on its own merit. The unverified-battery charge cap
-is only dropped once the chip answers as verified. On my phone the handshake
-completes: `chip_ok 1`, `authen_result 1`, model `ds28e16`.
+The second was fast charging. The pack has a Maxim DS28E16 authentication chip and
+the driver had been sitting in the tree unused, so nothing ever asked the battery
+who it was. SMB5 now reads the result five seconds after probe, retries while the
+supplier is still coming up, and re-checks every minute so a replaced battery gets
+judged on its own merit.
+
+My pack is an aftermarket one, and a genuine handshake with it is not something I
+can rely on, so this build sets `CONFIG_BATT_VERIFY_FORCE_VERIFIED`: the driver
+still registers `batt_verify` and answers the charger, but reports
+`authen_result 1` / `chip_ok 1` without touching the 1-Wire bus. The unverified
+charge cap is dropped, which is the whole point. If you run a genuine pack and
+want the real check back, turn that option off and the handshake returns.
 
 What I cannot tell you is whether it actually charges at 33 W, because I don't own
 a genuine Xiaomi 33 W charger. That is as far as the driver side goes on my own.
