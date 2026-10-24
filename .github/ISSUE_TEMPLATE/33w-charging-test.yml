@@ -1,0 +1,128 @@
+name: 33 W charging test
+description: Tell me whether a genuine Xiaomi 33 W charger actually charges at 33 W on this kernel.
+title: "[33W] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The DS28E16 battery authentication runs on this kernel, but I don't own a
+        genuine 33 W Xiaomi charger, so the charge rate itself has never been
+        checked on real hardware. If you have one, this report is genuinely
+        useful — "it caps at 18 W" is just as valuable as "it does 33 W".
+
+        A note first: please fill this in on this kernel, not on MIUI or a
+        different kernel, otherwise the numbers don't mean anything.
+
+  - type: input
+    id: charger
+    attributes:
+      label: Charger model
+      description: The model number printed on the brick, or the closest thing you can read off it.
+      placeholder: MDY-11-EX
+    validations:
+      required: true
+
+  - type: dropdown
+    id: genuine
+    attributes:
+      label: Is it an original Xiaomi charger?
+      options:
+        - Genuine Xiaomi / POCO 33 W charger
+        - Genuine Xiaomi charger, but not the 33 W one
+        - Third-party 33 W charger
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: wattage
+    attributes:
+      label: What the charge rate actually looks like
+      description: A USB power meter reading, or what the phone shows on the lock screen / charging notification (e.g. "33 W", "fast charging", "charging slowly").
+      placeholder: "meter says 27 W, lock screen says 33 W"
+    validations:
+      required: true
+
+  - type: textarea
+    id: dmesg
+    attributes:
+      label: Battery authentication log
+      description: |
+        Plug the charger in, let it sit for a minute, then run this with root and
+        paste the output. If `su` is unavailable, `adb root` first and drop the `su -c`.
+      value: |
+        <details><summary>Output</summary>
+
+        ```sh
+        adb shell su -c "dmesg | grep -i -E 'ds28e16|batt_verify|smb5'"
+        ```
+
+        ```
+        paste here
+        ```
+
+        </details>
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: sysfs
+    attributes:
+      label: Charging values from sysfs
+      description: Run this while it is charging and paste the whole block.
+      value: |
+        ```sh
+        adb shell su -c 'for f in current_max voltage_now current_now constant_charge_current charge_type status; do
+          printf "%-24s %s\n" "$f" "$(cat /sys/class/power_supply/battery/$f 2>/dev/null)"; done;
+        for f in chip_ok authen_result verify_model_name; do
+          printf "%-24s %s\n" "$f" "$(cat /sys/class/power_supply/batt_verify/$f 2>/dev/null)"; done'
+        ```
+
+        ```
+        paste here
+        ```
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: batteryinfo
+    attributes:
+      label: Battery info from Settings
+      description: Settings → Battery → Battery information (or however your ROM labels it).
+      value: |
+        - Design capacity:
+        - Maximum capacity:
+        - Cycle count:
+        - Health:
+        - Temperature:
+      render: markdown
+    validations:
+      required: true
+
+  - type: input
+    id: kernel
+    attributes:
+      label: Kernel version
+      description: From the release you flashed, or `/proc/version`.
+      placeholder: 5.4.302-vayu-kyler084-0.0.34
+    validations:
+      required: true
+
+  - type: input
+    id: rom
+    attributes:
+      label: ROM
+      description: Build and Android version. This kernel is only built and tested for LineageOS 24.0.
+      placeholder: LineageOS 24.0 (Android 17)
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Did it show the fast-charge animation, did the temperature spike, did it drop back to slow charge after a while, anything odd.
+    validations:
+      required: false
