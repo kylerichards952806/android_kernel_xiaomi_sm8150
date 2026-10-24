@@ -695,6 +695,21 @@ jobs:
           fi
           [ -s changes.md ] || echo '- (no commits recorded)' > changes.md
 
+          # Ducky's commits, credited separately. A merge from his tree can carry
+          # his entire port (hundreds of commits) the first time and a handful of
+          # patches afterwards; listing the whole import would bury the release
+          # page, so take the newest merge that brings a normal change set and
+          # list that one. Newest first, so the most recent sync wins.
+          rm -f ducky.md
+          for m in $(git rev-list --merges --first-parent "${base}..HEAD" | head -10); do
+            n=$(git rev-list --count --no-merges "$m^1..$m^2" 2>/dev/null || echo 0)
+            if [ "$n" -ge 1 ] && [ "$n" -le 50 ]; then
+              git log --no-merges --format='- %s (%h)' "$m^1..$m^2" \
+                | grep -vE "^- ($NOISE)" > ducky.md || true
+              [ -s ducky.md ] && break
+            fi
+          done
+
           {
             echo "### ${VERSION}"
             echo
@@ -721,6 +736,15 @@ jobs:
             echo
             cat changes.md
             echo
+            # His side of the merge, kept separate so it reads as his work.
+            if [ -s ducky.md ]; then
+              echo "### Ducky's changes in this build"
+              echo
+              echo 'Merged in from his tree. All thanks to Ducky for these.'
+              echo
+              cat ducky.md
+              echo
+            fi
             echo '### Artifacts'
             echo
             echo '- `boot.img` — `fastboot flash boot boot.img` (128 MiB, spliced into the vendor container with its AVB footer and appended DTB intact)'
