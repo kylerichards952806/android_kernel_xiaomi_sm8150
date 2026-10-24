@@ -658,7 +658,7 @@ jobs:
           [ -s changes.md ] || echo '- (no commits recorded)' > changes.md
 
           {
-            echo "### vayu ${VERSION}"
+            echo "### ${VERSION}"
             echo
             echo '| field | value |'
             echo '| --- | --- |'
@@ -684,6 +684,10 @@ jobs:
             echo '- `SHA256SUMS.txt` — verify before flashing'
             echo
             echo "Built by [run ${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}); images verified by verify_images.py before upload."
+            echo
+            echo '### Credits'
+            echo
+            echo 'All credit for the base 5.4 SM8150 kernel goes to [Ducky](https://github.com/DUCKS-QCM-5-4/android_kernel_xiaomi_sm8150) — this fork is only a set of adaptations and fixes built on top of his project. Thank you, Ducky.'
           } > notes.md
 
           # A re-run of the same dispatch keeps its run number, so replace rather
@@ -691,7 +695,7 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release delete "$TAG" --yes --cleanup-tag
           fi
-          TITLE="vayu ${VERSION} · ${ROOT} · ${DATE}"
+          TITLE="${VERSION} · ${ROOT} · ${DATE}"
           gh release create "$TAG" \
             --title "$TITLE" \
             --notes-file notes.md \
