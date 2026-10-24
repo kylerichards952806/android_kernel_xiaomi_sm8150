@@ -72,8 +72,10 @@ useful. What helps:
 - Whether the battery info screen still shows capacity and cycle count after a
   couple of reboots.
 
-Open an issue with that and I'll dig in. Honestly, "it charges at 33 W" or "it
-still caps at 18 W" are both useful answers.
+There's a form for it — [open the 33 W charging test](../../issues/new?template=33w-charging-test.yml)
+and paste the output in. It asks for exactly the things above, so it shouldn't take
+long. Honestly, "it charges at 33 W" or "it still caps at 18 W" are both useful
+answers.
 
 ## Flashing
 
