@@ -587,7 +587,10 @@ jobs:
           # Rewrite the checksums now that the zip exists, and list the files
           # explicitly: `sha256sum *` also hashes the checksum file itself,
           # because the redirection creates it before the glob is expanded.
-          (cd dist && sha256sum boot.img dtbo.img Image kernel.config "$ZIP" \
+          # Only files that are actually attached to the release are hashed -
+          # Image stays in the Actions artifact, and a line for it here made
+          # `sha256sum -c` fail for anyone verifying a download.
+          (cd dist && sha256sum boot.img dtbo.img kernel.config "$ZIP" \
               > SHA256SUMS.txt)
           ls -lh dist
 
