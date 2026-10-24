@@ -671,7 +671,15 @@ jobs:
             echo "| date | ${DATE} |"
             echo '| config | vayu, stock variant |'
             echo
-            echo '### What changed'
+            # Hand-written prose, kept in the repo rather than in this workflow so
+            # the wording can be changed without touching CI. If the file is
+            # missing or empty, the commit list below is all the notes get.
+            if [ -s .github/release-highlights.md ]; then
+              echo
+              cat .github/release-highlights.md
+              echo
+            fi
+            echo '### Commits in this build'
             echo
             cat changes.md
             echo
